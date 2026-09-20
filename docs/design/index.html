@@ -1,0 +1,1412 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <title>AppDock — 应用构建与分发中心</title>
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+  <style>
+    :root {
+      --bg: oklch(15% 0.012 250);
+      --surface: oklch(19% 0.014 250);
+      --surface-2: oklch(23% 0.014 250);
+      --fg: oklch(94% 0.01 250);
+      --muted: oklch(62% 0.02 250);
+      --border: oklch(30% 0.016 250);
+      --accent: oklch(72% 0.13 195);
+      --accent-dim: oklch(72% 0.13 195 / 0.15);
+      --success: oklch(70% 0.14 145);
+      --success-dim: oklch(70% 0.14 145 / 0.15);
+      --warn: oklch(78% 0.12 85);
+      --warn-dim: oklch(78% 0.12 85 / 0.15);
+      --danger: oklch(65% 0.18 25);
+      --danger-dim: oklch(65% 0.18 25 / 0.15);
+      --info: oklch(68% 0.12 250);
+      --info-dim: oklch(68% 0.12 250 / 0.15);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      --mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+      --radius: 6px;
+      --radius-lg: 10px;
+      --sidebar: 240px;
+      --topbar: 56px;
+      --shadow-glow: 0 0 0 1px oklch(72% 0.13 195 / 0.25), 0 0 24px oklch(72% 0.13 195 / 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { min-height: 100%; background: var(--bg); color: var(--fg); font: 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .muted { color: var(--muted); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); cursor: pointer; font-weight: 500; transition: background .15s, border-color .15s, box-shadow .15s; white-space: nowrap; }
+    .btn:hover { background: oklch(27% 0.014 250); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: oklch(18% 0.02 195); border-color: transparent; font-weight: 600; }
+    .btn-primary:hover { background: oklch(78% 0.13 195); color: oklch(18% 0.02 195); }
+    .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
+    .btn-ghost:hover { background: var(--surface-2); color: var(--fg); }
+    .btn-danger { background: var(--danger-dim); color: var(--danger); border-color: oklch(65% 0.18 25 / 0.35); }
+    .btn-danger:hover { background: oklch(65% 0.18 25 / 0.28); color: var(--danger); }
+    .btn-sm { height: 30px; padding: 0 10px; font-size: 13px; }
+    .btn-lg { height: 44px; padding: 0 20px; font-size: 15px; }
+    .btn-block { width: 100%; }
+
+    /* Form */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 13px; color: var(--muted); font-weight: 500; }
+    .field .hint { font-size: 12px; color: var(--muted); }
+    .input, .select, .textarea { width: 100%; height: 36px; padding: 0 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg); color: var(--fg); transition: border-color .15s, box-shadow .15s; }
+    .textarea { height: auto; min-height: 88px; padding: 10px 12px; resize: vertical; }
+    .input:hover, .select:hover, .textarea:hover { border-color: oklch(38% 0.016 250); }
+    .input:focus, .select:focus, .textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); outline: none; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid .span-2 { grid-column: span 2; }
+    .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+    .switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch span { position: absolute; inset: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; cursor: pointer; transition: .15s; }
+    .switch span::after { content: ""; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background: var(--muted); border-radius: 50%; transition: .15s; }
+    .switch input:checked + span { background: var(--accent-dim); border-color: var(--accent); }
+    .switch input:checked + span::after { transform: translateX(18px); background: var(--accent); }
+
+    /* Pills */
+    .pill { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 500; line-height: 1; }
+    .pill-success { background: var(--success-dim); color: var(--success); }
+    .pill-warn { background: var(--warn-dim); color: var(--warn); }
+    .pill-danger { background: var(--danger-dim); color: var(--danger); }
+    .pill-muted { background: oklch(30% 0.01 250 / 0.5); color: var(--muted); }
+    .pill-info { background: var(--info-dim); color: var(--info); }
+    .pill-accent { background: var(--accent-dim); color: var(--accent); }
+
+    /* Cards / panels */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+    .card-pad { padding: 20px; }
+    .panel-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+
+    /* Table */
+    .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+    table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.data th { text-align: left; padding: 10px 14px; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); background: var(--surface); white-space: nowrap; }
+    table.data td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    table.data tr:last-child td { border-bottom: none; }
+    table.data tbody tr { transition: background .12s; }
+    table.data tbody tr:hover { background: oklch(22% 0.014 250); }
+
+    /* Modal */
+    .modal-backdrop { position: fixed; inset: 0; background: oklch(8% 0.01 250 / 0.72); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 24px; backdrop-filter: blur(4px); }
+    .modal { width: min(440px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 24px 64px oklch(0% 0 0 / 0.45); }
+    .modal-hd { padding: 18px 20px 0; font-size: 16px; font-weight: 600; }
+    .modal-bd { padding: 12px 20px 18px; color: var(--muted); font-size: 14px; }
+    .modal-ft { padding: 0 20px 20px; display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .tab { height: 40px; padding: 0 14px; background: transparent; border: none; color: var(--muted); cursor: pointer; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab:hover { color: var(--fg); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* Logo */
+    .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; font-weight: 650; letter-spacing: -.02em; }
+    .logo:hover { text-decoration: none; color: var(--fg); }
+    .logo svg { flex-shrink: 0; }
+    .logo .mark { color: var(--accent); }
+
+    /* Public layout */
+    .pub-shell { min-height: 100vh; display: flex; flex-direction: column; }
+    .pub-top { height: var(--topbar); border-bottom: 1px solid var(--border); background: oklch(15% 0.012 250 / 0.9); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 50; }
+    .pub-top-inner { max-width: 1120px; margin: 0 auto; height: 100%; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .pub-nav { display: flex; align-items: center; gap: 8px; }
+    .pub-main { flex: 1; max-width: 1120px; width: 100%; margin: 0 auto; padding: 32px 24px 64px; }
+    .pub-footer { border-top: 1px solid var(--border); padding: 20px 24px; text-align: center; color: var(--muted); font-size: 12px; }
+
+    /* Admin layout */
+    .admin-shell { display: flex; min-height: 100vh; }
+    .admin-side { width: var(--sidebar); flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+    .admin-side-hd { height: var(--topbar); padding: 0 16px; display: flex; align-items: center; border-bottom: 1px solid var(--border); }
+    .admin-nav { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: auto; }
+    .nav-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: var(--radius); color: var(--muted); text-decoration: none; font-size: 13.5px; font-weight: 500; transition: background .12s, color .12s; }
+    .nav-item:hover { background: var(--surface-2); color: var(--fg); text-decoration: none; }
+    .nav-item.active { background: var(--accent-dim); color: var(--accent); box-shadow: inset 0 0 0 1px oklch(72% 0.13 195 / 0.25); }
+    .nav-item svg { opacity: .85; }
+    .nav-sec { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 14px 12px 6px; }
+    .admin-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .admin-top { height: var(--topbar); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: var(--bg); }
+    .admin-content { padding: 24px 28px 48px; flex: 1; }
+    .page-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    .page-hd h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+    .page-hd .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+    .breadcrumb a { color: var(--muted); }
+    .breadcrumb a:hover { color: var(--accent); }
+
+    /* App cards public */
+    .app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .app-card { display: flex; flex-direction: column; gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); transition: border-color .15s, box-shadow .15s, transform .15s; cursor: pointer; text-decoration: none; color: inherit; }
+    .app-card:hover { border-color: oklch(40% 0.02 195); box-shadow: var(--shadow-glow); text-decoration: none; transform: translateY(-1px); }
+    .app-icon { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 16px; color: oklch(18% 0.02 195); }
+    .platform-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+    .plat { height: 22px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--border); font-size: 11px; color: var(--muted); display: inline-flex; align-items: center; font-family: var(--mono); }
+
+    /* Download groups */
+    .dl-groups { display: grid; gap: 12px; }
+    .dl-group { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+    .dl-group-hd { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: oklch(17% 0.014 250); }
+    .dl-asset { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .dl-asset:last-child { border-bottom: none; }
+    .dl-asset:hover { background: oklch(21% 0.014 250); }
+    .dl-meta { flex: 1; min-width: 0; }
+    .dl-name { font-family: var(--mono); font-size: 13px; word-break: break-all; }
+    .dl-sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+
+    /* Dropzone */
+    .dropzone { border: 1.5px dashed var(--border); border-radius: var(--radius-lg); padding: 36px 24px; text-align: center; background: oklch(17% 0.012 250); transition: border-color .15s, background .15s, box-shadow .15s; cursor: pointer; }
+    .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-dim); box-shadow: var(--shadow-glow); }
+    .dropzone .dz-title { font-weight: 600; margin-bottom: 4px; }
+    .file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .file-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+    .file-row .name { flex: 1; font-family: var(--mono); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Stats */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    .stat-card { padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+    .stat-card .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .stat-card .value { font-size: 28px; font-weight: 650; letter-spacing: -.03em; font-family: var(--mono); }
+    .stat-card .delta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* Auth pages */
+    .auth-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(ellipse 80% 50% at 50% -20%, oklch(72% 0.13 195 / 0.12), transparent); }
+    .auth-card { width: min(400px, 100%); padding: 28px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 20px 60px oklch(0% 0 0 / 0.35); }
+    .auth-card h1 { font-size: 20px; font-weight: 650; margin: 16px 0 6px; }
+    .auth-card .lead { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+    .auth-stack { display: flex; flex-direction: column; gap: 14px; }
+
+    /* Empty */
+    .empty { text-align: center; padding: 64px 24px; border: 1px dashed var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+    .empty h2 { font-size: 18px; margin: 12px 0 6px; }
+    .empty p { color: var(--muted); margin-bottom: 18px; max-width: 360px; margin-inline: auto; }
+
+    /* Hero public */
+    .hero { margin-bottom: 28px; }
+    .hero h1 { font-size: 32px; font-weight: 700; letter-spacing: -.03em; margin-bottom: 8px; }
+    .hero p { color: var(--muted); max-width: 560px; font-size: 15px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 24px; align-items: center; }
+    .search { position: relative; flex: 1; min-width: 200px; max-width: 360px; }
+    .search input { padding-left: 36px; }
+    .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+    .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; }
+    .chip:hover { color: var(--fg); background: var(--surface-2); }
+    .chip.active { background: var(--accent-dim); color: var(--accent); border-color: oklch(72% 0.13 195 / 0.4); }
+
+    .changelog { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); padding: 16px 18px; }
+    .changelog pre { font-family: var(--mono); font-size: 13px; white-space: pre-wrap; color: var(--fg); line-height: 1.6; }
+    .collapse-hd { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; color: var(--fg); cursor: pointer; padding: 12px 0; font-weight: 600; }
+    .ver-list { border-top: 1px solid var(--border); }
+    .ver-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .ver-row:last-child { border-bottom: none; }
+
+    .user-menu { position: relative; }
+    .user-btn { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+    .user-btn:hover { background: var(--surface-2); }
+    .avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-dim); color: var(--accent); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+    .dropdown { position: absolute; right: 0; top: calc(100% + 6px); min-width: 180px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 6px; box-shadow: 0 12px 40px oklch(0% 0 0 / 0.4); z-index: 80; }
+    .dropdown a, .dropdown button { display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px 10px; border: none; background: none; color: var(--fg); text-decoration: none; border-radius: var(--radius); cursor: pointer; font-size: 13px; text-align: left; }
+    .dropdown a:hover, .dropdown button:hover { background: var(--surface-2); text-decoration: none; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 1100; padding: 12px 16px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 32px oklch(0% 0 0 / 0.4); font-size: 13px; display: flex; align-items: center; gap: 10px; }
+    .toast.ok { border-color: oklch(70% 0.14 145 / 0.4); }
+
+    .member-row { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); margin-bottom: 8px; }
+    .webhook-box { font-family: var(--mono); font-size: 12px; padding: 14px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); word-break: break-all; color: var(--accent); }
+
+    @media (max-width: 1100px) {
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .span-2 { grid-column: span 1; }
+    }
+    @media (max-width: 800px) {
+      .admin-shell { flex-direction: column; }
+      .admin-side { width: 100%; height: auto; position: static; }
+      .admin-nav { flex-direction: row; flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script data-presets="react" type="text/babel">
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+/* ========== Icons (inline SVG) ========== */
+const Icon = ({ d, size = 16, ...p }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...p}><path d={d} /></svg>
+);
+const I = {
+  home: "M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z",
+  apps: "M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z",
+  users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+  jobs: "M4 6h16M4 12h16M4 18h10",
+  settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8.66-3a7.97 7.97 0 0 0-.15-1.5l2.04-1.58-2-3.46-2.4.96a8.1 8.1 0 0 0-1.3-.75L16.5 2h-4l-.35 2.67c-.46.2-.9.45-1.3.75l-2.4-.96-2 3.46 2.04 1.58c-.1.49-.15.99-.15 1.5s.05 1.01.15 1.5L4.45 15.08l2 3.46 2.4-.96c.4.3.84.55 1.3.75L12.5 22h4l.35-2.67c.46-.2.9-.45 1.3-.75l2.4.96 2-3.46-2.04-1.58c.1-.49.15-.99.15-1.5z",
+  search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2l-4.35-4.35",
+  download: "M12 3v12m0 0l-4-4m4 4l4-4M5 21h14",
+  upload: "M12 21V9m0 0l4 4m-4-4l-4 4M5 3h14",
+  sync: "M21 12a9 9 0 0 1-15.36 6.36M3 12a9 9 0 0 1 15.36-6.36M3 16.5V21h4.5M21 7.5V3H16.5",
+  plus: "M12 5v14M5 12h14",
+  chevron: "M9 18l6-6-6-6",
+  check: "M5 13l4 4L19 7",
+  x: "M6 6l12 12M18 6L6 18",
+  lock: "M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5V11z",
+  alert: "M12 9v4m0 4h.01M10.3 4.3L2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z",
+  copy: "M8 8h12v12H8V8zm-4 4h2v10h10v2H4V12z",
+  external: "M14 4h6v6M10 14L20 4M20 14v6H4V4h6",
+};
+
+function Logo({ size = 28, word = true }) {
+  return (
+    <a href="#/" className="logo" data-od-id="brand-logo" onClick={e => { /* hash handled */ }}>
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect x="1" y="1" width="30" height="30" rx="8" stroke="currentColor" strokeOpacity="0.2" />
+        <path d="M9 8v16M9 10h8M9 16h11M9 22h6" stroke="var(--accent)" strokeWidth="2.2" strokeLinecap="round" />
+        <circle cx="23" cy="16" r="2.4" fill="var(--accent)" />
+      </svg>
+      {word && <span>App<span className="mark">Dock</span></span>}
+    </a>
+  );
+}
+
+/* ========== Demo Data ========== */
+const APPS = [
+  {
+    id: "app_moonnotes",
+    name: "MoonNotes",
+    slug: "moonnotes",
+    summary: "跨平台 Markdown 笔记与知识库，支持双向链接与离线同步。",
+    visibility: "public",
+    syncEnabled: true,
+    github: { owner: "moonlab", repo: "moonnotes" },
+    includeGlob: "*.{exe,dmg,AppImage,apk}",
+    color: "oklch(72% 0.13 195)",
+    initials: "MN",
+    platforms: ["Windows", "macOS", "Linux", "Android"],
+    latest: "v2.4.1",
+    syncStatus: "ok",
+    lastSyncAt: "2026-09-20 09:12",
+    members: [
+      { userId: "u1", name: "陈启明", email: "qi@moonlab.io", role: "manager" },
+      { userId: "u2", name: "林晓", email: "lin@moonlab.io", role: "operator" },
+    ],
+    versions: [
+      {
+        tag: "v2.4.1",
+        publishedAt: "2026-09-18",
+        changelog: "## v2.4.1\n- 修复 Windows 安装器签名校验\n- Android 支持 Scoped Storage\n- 同步冲突提示优化",
+        assets: [
+          { name: "MoonNotes-2.4.1-win-x64.exe", platform: "Windows", size: "68.2 MB", sha256: "a3f1c8e92b7d4e6f1a0c5b8d9e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f", url: "#" },
+          { name: "MoonNotes-2.4.1-mac-universal.dmg", platform: "macOS", size: "74.5 MB", sha256: "b4e2d9f03c8e5f7a2b1d6c9e0f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a", url: "#" },
+          { name: "MoonNotes-2.4.1-linux-x86_64.AppImage", platform: "Linux", size: "71.1 MB", sha256: "c5f3e0a14d9f6a8b3c2e7d0f1a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b", url: "#" },
+          { name: "MoonNotes-2.4.1-android-arm64.apk", platform: "Android", size: "42.8 MB", sha256: "d6a4f1b25e0a7b9c4d3f8e1a2b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c", url: "#" },
+        ],
+      },
+      {
+        tag: "v2.4.0",
+        publishedAt: "2026-09-01",
+        changelog: "## v2.4.0\n- 新增画布白板\n- 性能优化",
+        assets: [
+          { name: "MoonNotes-2.4.0-win-x64.exe", platform: "Windows", size: "67.9 MB", sha256: "e7b5a2c36f1b8c0d5e4a9f2b3c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d", url: "#" },
+          { name: "MoonNotes-2.4.0-mac-universal.dmg", platform: "macOS", size: "74.0 MB", sha256: "f8c6b3d47a2c9d1e6f5b0a3c4d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e", url: "#" },
+        ],
+      },
+      {
+        tag: "v2.3.8",
+        publishedAt: "2026-08-12",
+        changelog: "## v2.3.8\n- 安全补丁",
+        assets: [
+          { name: "MoonNotes-2.3.8-win-x64.exe", platform: "Windows", size: "66.4 MB", sha256: "09d7c4e58b3d0e2f7a6c1b4d5e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f", url: "#" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "app_forgedesk",
+    name: "ForgeDesk",
+    slug: "forgedesk",
+    summary: "工程师桌面工具箱：终端、任务看板与本地 API Mock。",
+    visibility: "password",
+    syncEnabled: true,
+    github: { owner: "forgeco", repo: "forgedesk" },
+    includeGlob: "ForgeDesk-*.{msi,dmg}",
+    color: "oklch(70% 0.14 145)",
+    initials: "FD",
+    platforms: ["Windows", "macOS"],
+    latest: "v1.8.0",
+    syncStatus: "syncing",
+    lastSyncAt: "2026-09-20 10:01",
+    passwordHint: "团队内部分发口令",
+    members: [
+      { userId: "u1", name: "陈启明", email: "qi@moonlab.io", role: "manager" },
+      { userId: "u3", name: "赵宁", email: "zhao@forge.co", role: "viewer" },
+    ],
+    versions: [
+      {
+        tag: "v1.8.0",
+        publishedAt: "2026-09-19",
+        changelog: "## v1.8.0\n- Mock Server 支持 OpenAPI 3.1\n- 终端分屏",
+        assets: [
+          { name: "ForgeDesk-1.8.0-win-x64.msi", platform: "Windows", size: "92.3 MB", sha256: "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f80", url: "#" },
+          { name: "ForgeDesk-1.8.0-mac-arm64.dmg", platform: "macOS", size: "88.6 MB", sha256: "2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091", url: "#" },
+        ],
+      },
+      {
+        tag: "v1.7.2",
+        publishedAt: "2026-08-28",
+        changelog: "## v1.7.2\n- 修复 MSI 静默安装",
+        assets: [
+          { name: "ForgeDesk-1.7.2-win-x64.msi", platform: "Windows", size: "91.0 MB", sha256: "3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2", url: "#" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "app_pixelsync",
+    name: "PixelSync",
+    slug: "pixelsync",
+    summary: "设计稿与工程资源同步桥，支持 Figma 导出管道。",
+    visibility: "login",
+    syncEnabled: false,
+    github: null,
+    includeGlob: "",
+    color: "oklch(68% 0.12 250)",
+    initials: "PS",
+    platforms: ["Windows", "macOS", "Linux"],
+    latest: "v0.9.3",
+    syncStatus: "manual",
+    lastSyncAt: "—",
+    members: [
+      { userId: "u2", name: "林晓", email: "lin@moonlab.io", role: "operator" },
+    ],
+    versions: [
+      {
+        tag: "v0.9.3",
+        publishedAt: "2026-09-15",
+        changelog: "## v0.9.3\n- 手动上传首发包\n- Linux AppImage 试验构建",
+        assets: [
+          { name: "PixelSync-0.9.3-Setup.exe", platform: "Windows", size: "54.1 MB", sha256: "4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3", url: "#" },
+          { name: "PixelSync-0.9.3.dmg", platform: "macOS", size: "51.7 MB", sha256: "5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4", url: "#" },
+          { name: "PixelSync-0.9.3.AppImage", platform: "Linux", size: "58.2 MB", sha256: "6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5", url: "#" },
+        ],
+      },
+    ],
+  },
+];
+
+const USERS = [
+  { id: "u1", name: "陈启明", email: "qi@moonlab.io", role: "admin", status: "active", lastLogin: "2026-09-20 08:40" },
+  { id: "u2", name: "林晓", email: "lin@moonlab.io", role: "operator", status: "active", lastLogin: "2026-09-19 21:15" },
+  { id: "u3", name: "赵宁", email: "zhao@forge.co", role: "viewer", status: "active", lastLogin: "2026-09-18 14:02" },
+  { id: "u4", name: "周岚", email: "zhou@moonlab.io", role: "operator", status: "disabled", lastLogin: "2026-07-02 11:20" },
+];
+
+const JOBS = [
+  { id: "job_8812", queue: "release-sync", app: "MoonNotes", trigger: "webhook", status: "success", duration: "12.4s", createdAt: "2026-09-20 09:12:03", message: "Synced release v2.4.1 · 4 assets" },
+  { id: "job_8811", queue: "asset-download", app: "ForgeDesk", trigger: "poll", status: "running", duration: "41s", createdAt: "2026-09-20 10:01:18", message: "Downloading ForgeDesk-1.8.0-mac-arm64.dmg" },
+  { id: "job_8809", queue: "notify", app: "MoonNotes", trigger: "manual", status: "success", duration: "0.8s", createdAt: "2026-09-20 09:12:16", message: "Webhook notify OK" },
+  { id: "job_8802", queue: "asset-download", app: "ForgeDesk", trigger: "poll", status: "failed", duration: "62.1s", createdAt: "2026-09-19 22:40:11", message: "GitHub 429 rate limit · retry scheduled" },
+  { id: "job_8798", queue: "release-sync", app: "PixelSync", trigger: "manual", status: "success", duration: "3.2s", createdAt: "2026-09-15 16:05:44", message: "Manual upload registered v0.9.3" },
+];
+
+const SETTINGS_DEFAULT = {
+  siteName: "AppDock",
+  pollIntervalMin: 15,
+  uploadMaxMb: 512,
+  githubTokenConfigured: true,
+  publicBaseUrl: "https://dl.example.com",
+};
+
+const PLATFORM_ORDER = ["Windows", "macOS", "Linux", "Android"];
+const ROLE_LABELS = { viewer: "查看者 Viewer", operator: "操作员 Operator", manager: "管理员 Manager", admin: "系统管理员" };
+const VIS_LABELS = { public: "公开", password: "口令", login: "登录" };
+
+/* ========== Router ========== */
+function parseHash() {
+  const raw = (location.hash || "#/").replace(/^#/, "") || "/";
+  const [path, qs] = raw.split("?");
+  const parts = path.split("/").filter(Boolean);
+  const query = Object.fromEntries(new URLSearchParams(qs || ""));
+  return { path: "/" + parts.join("/"), parts, query };
+}
+
+function navigate(to) {
+  if (!to.startsWith("#")) to = "#" + (to.startsWith("/") ? to : "/" + to);
+  location.hash = to.slice(1);
+}
+
+function Link({ to, className, children, ...rest }) {
+  const href = to.startsWith("#") ? to : "#" + (to.startsWith("/") ? to : "/" + to);
+  return <a href={href} className={className} {...rest}>{children}</a>;
+}
+
+/* ========== Atoms ========== */
+function Pill({ tone = "muted", children }) {
+  return <span className={`pill pill-${tone}`}>{children}</span>;
+}
+
+function VisBadge({ v }) {
+  const tone = v === "public" ? "success" : v === "password" ? "warn" : "info";
+  return <Pill tone={tone}>{VIS_LABELS[v] || v}</Pill>;
+}
+
+function SyncBadge({ s }) {
+  if (s === "ok") return <Pill tone="success">同步正常</Pill>;
+  if (s === "syncing") return <Pill tone="warn">同步中</Pill>;
+  if (s === "failed") return <Pill tone="danger">同步失败</Pill>;
+  return <Pill tone="muted">仅手动</Pill>;
+}
+
+function StatusJob({ s }) {
+  const map = { success: "success", running: "warn", failed: "danger", queued: "muted" };
+  const label = { success: "成功", running: "运行中", failed: "失败", queued: "排队" };
+  return <Pill tone={map[s] || "muted"}>{label[s] || s}</Pill>;
+}
+
+function Modal({ open, title, children, onClose, footer }) {
+  if (!open) return null;
+  return (
+    <div className="modal-backdrop" onClick={onClose} data-od-id="modal-backdrop">
+      <div className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="modal-hd">{title}</div>
+        <div className="modal-bd">{children}</div>
+        {footer && <div className="modal-ft">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+function Toast({ msg, onDone }) {
+  useEffect(() => {
+    if (!msg) return;
+    const t = setTimeout(onDone, 2400);
+    return () => clearTimeout(t);
+  }, [msg, onDone]);
+  if (!msg) return null;
+  return <div className="toast ok" data-od-id="toast"><Icon d={I.check} size={14} />{msg}</div>;
+}
+
+function groupAssets(assets) {
+  const g = {};
+  PLATFORM_ORDER.forEach(p => { g[p] = []; });
+  (assets || []).forEach(a => { (g[a.platform] || (g[a.platform] = [])).push(a); });
+  return PLATFORM_ORDER.filter(p => g[p]?.length).map(p => ({ platform: p, assets: g[p] }));
+}
+
+/* ========== Public Shell ========== */
+function PublicShell({ children, route }) {
+  return (
+    <div className="pub-shell" data-od-id="public-shell">
+      <header className="pub-top" data-od-id="public-topbar">
+        <div className="pub-top-inner">
+          <Logo />
+          <nav className="pub-nav">
+            <Link to="/" className="btn btn-ghost btn-sm">应用目录</Link>
+            <Link to="/admin" className="btn btn-sm">管理后台</Link>
+          </nav>
+        </div>
+      </header>
+      <main className="pub-main">{children}</main>
+      <footer className="pub-footer">AppDock · 自建应用构建与分发中心 · 示意数据</footer>
+    </div>
+  );
+}
+
+/* ========== Admin Shell ========== */
+function AdminShell({ children, route, user, onLogout }) {
+  const [menu, setMenu] = useState(false);
+  const items = [
+    { to: "/admin", label: "仪表盘", icon: I.home, match: p => p === "/admin" },
+    { to: "/admin/apps", label: "应用", icon: I.apps, match: p => p.startsWith("/admin/apps") },
+    { to: "/admin/jobs", label: "任务队列", icon: I.jobs, match: p => p.startsWith("/admin/jobs") },
+    { to: "/admin/users", label: "用户", icon: I.users, match: p => p.startsWith("/admin/users"), admin: true },
+    { to: "/admin/settings", label: "系统设置", icon: I.settings, match: p => p.startsWith("/admin/settings") },
+  ];
+  return (
+    <div className="admin-shell" data-od-id="admin-shell">
+      <aside className="admin-side" data-od-id="admin-sidebar">
+        <div className="admin-side-hd"><Logo size={24} /></div>
+        <nav className="admin-nav">
+          <div className="nav-sec">工作台</div>
+          {items.filter(i => !i.admin || user?.role === "admin").map(i => (
+            <Link key={i.to} to={i.to} className={`nav-item ${i.match(route.path) ? "active" : ""}`} data-od-id={`nav-${i.to.slice(1).replace(/\//g, "-")}`}>
+              <Icon d={i.icon} size={16} />{i.label}
+            </Link>
+          ))}
+          <div className="nav-sec">对外</div>
+          <Link to="/" className="nav-item"><Icon d={I.external} size={16} />下载站</Link>
+        </nav>
+      </aside>
+      <div className="admin-body">
+        <header className="admin-top" data-od-id="admin-topbar">
+          <div className="muted" style={{ fontSize: 13 }}>构建 · 同步 · 分发</div>
+          <div className="user-menu">
+            <button type="button" className="user-btn" onClick={() => setMenu(v => !v)} data-od-id="user-menu-btn">
+              <span className="avatar">{(user?.name || "U").slice(0, 1)}</span>
+              <span style={{ fontSize: 13 }}>{user?.name || "未登录"}</span>
+            </button>
+            {menu && (
+              <div className="dropdown" data-od-id="user-dropdown">
+                <div style={{ padding: "8px 10px", fontSize: 12 }} className="muted">{user?.email}<br />{ROLE_LABELS[user?.role]}</div>
+                <Link to="/admin/settings" onClick={() => setMenu(false)}>系统设置</Link>
+                <button type="button" onClick={() => { setMenu(false); onLogout(); }}>退出登录</button>
+              </div>
+            )}
+          </div>
+        </header>
+        <div className="admin-content">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ========== Public Pages ========== */
+function HomePage({ apps }) {
+  const [q, setQ] = useState("");
+  const [plat, setPlat] = useState("all");
+  const list = apps.filter(a => a.visibility === "public" || true).filter(a => {
+    const hit = !q || a.name.toLowerCase().includes(q.toLowerCase()) || a.slug.includes(q.toLowerCase());
+    const pOk = plat === "all" || a.platforms.includes(plat);
+    return hit && pOk;
+  });
+  // Show all apps on home for demo discoverability, but badge visibility
+  return (
+    <div data-od-id="page-home">
+      <div className="hero">
+        <h1 data-od-id="home-title">应用下载中心</h1>
+        <p>从 GitHub Release 同步安装包到自建存储，提供国内可达下载。支持公开、口令与登录可见性。</p>
+      </div>
+      <div className="toolbar">
+        <div className="search">
+          <Icon d={I.search} size={15} />
+          <input className="input" placeholder="搜索应用名称或 slug…" value={q} onChange={e => setQ(e.target.value)} data-od-id="home-search" />
+        </div>
+        <div className="filter-chips">
+          {["all", ...PLATFORM_ORDER].map(p => (
+            <button key={p} type="button" className={`chip ${plat === p ? "active" : ""}`} onClick={() => setPlat(p)}>{p === "all" ? "全部平台" : p}</button>
+          ))}
+        </div>
+      </div>
+      {list.length === 0 ? (
+        <div className="empty"><Icon d={I.apps} size={28} /><h2>没有匹配的应用</h2><p>调整搜索关键词或平台筛选后再试。</p></div>
+      ) : (
+        <div className="app-grid">
+          {list.map(app => (
+            <Link key={app.id} to={`/a/${app.slug}`} className="app-card" data-od-id={`app-card-${app.slug}`}>
+              <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                <div className="app-icon" style={{ background: app.color }}>{app.initials}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <strong style={{ fontSize: 16 }}>{app.name}</strong>
+                    <VisBadge v={app.visibility} />
+                  </div>
+                  <div className="muted" style={{ fontSize: 13, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{app.summary}</div>
+                </div>
+              </div>
+              <div className="platform-badges">{app.platforms.map(p => <span key={p} className="plat">{p}</span>)}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="mono muted" style={{ fontSize: 12 }}>最新 {app.latest}</span>
+                <span className="muted" style={{ fontSize: 12 }}>查看详情 →</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PasswordGate({ app, onUnlock }) {
+  const [pwd, setPwd] = useState("");
+  const [err, setErr] = useState("");
+  return (
+    <div className="auth-wrap" data-od-id="page-password-gate">
+      <div className="auth-card">
+        <Logo word={false} />
+        <h1>需要口令</h1>
+        <p className="lead">「{app.name}」为口令可见。{app.passwordHint || "请输入分发口令继续。"}</p>
+        <div className="auth-stack">
+          <div className="field">
+            <label>访问口令</label>
+            <input className="input" type="password" value={pwd} onChange={e => setPwd(e.target.value)} placeholder="输入口令" autoFocus />
+            {err && <span style={{ color: "var(--danger)", fontSize: 12 }}>{err}</span>}
+          </div>
+          <button type="button" className="btn btn-primary btn-block" onClick={() => {
+            if (pwd.trim().length < 1) { setErr("请输入口令"); return; }
+            // Demo: any non-empty unlocks
+            onUnlock(app.slug);
+          }}>继续访问</button>
+          <Link to="/" className="btn btn-ghost btn-block">返回首页</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PublicLogin({ onLogin, redirect }) {
+  const [email, setEmail] = useState("lin@moonlab.io");
+  const [password, setPassword] = useState("••••••••");
+  return (
+    <div className="auth-wrap" data-od-id="page-public-login">
+      <div className="auth-card">
+        <Logo word={false} />
+        <h1>登录后下载</h1>
+        <p className="lead">此应用仅对已登录用户可见。登录后将返回应用详情。</p>
+        <div className="auth-stack">
+          <div className="field"><label>邮箱</label><input className="input" value={email} onChange={e => setEmail(e.target.value)} /></div>
+          <div className="field"><label>密码</label><input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} /></div>
+          <button type="button" className="btn btn-primary btn-block" onClick={() => onLogin({ id: "u2", name: "林晓", email, role: "operator" }, redirect)}>登录</button>
+          <Link to="/" className="btn btn-ghost btn-block">返回首页</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ForbiddenPage({ title = "无权访问", desc = "你没有权限查看此内容。请联系应用管理员授权。" }) {
+  return (
+    <div data-od-id="page-forbidden">
+      <div className="empty">
+        <Icon d={I.lock} size={32} />
+        <h2>{title}</h2>
+        <p>{desc}</p>
+        <Link to="/" className="btn">返回首页</Link>
+      </div>
+    </div>
+  );
+}
+
+function DownloadGroups({ assets, onDownload }) {
+  const groups = groupAssets(assets);
+  return (
+    <div className="dl-groups" data-od-id="download-groups">
+      {groups.map(g => (
+        <div key={g.platform} className="dl-group">
+          <div className="dl-group-hd">
+            <strong>{g.platform}</strong>
+            <span className="muted mono" style={{ fontSize: 12 }}>{g.assets.length} 个文件</span>
+          </div>
+          {g.assets.map(a => (
+            <div key={a.name} className="dl-asset" data-od-id={`asset-${a.name}`}>
+              <div className="dl-meta">
+                <div className="dl-name">{a.name}</div>
+                <div className="dl-sub">{a.size} · sha256:{a.sha256.slice(0, 16)}…</div>
+              </div>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => onDownload?.(a)}><Icon d={I.download} size={14} />下载</button>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AppDetailPage({ app, onDownload, toast }) {
+  const [histOpen, setHistOpen] = useState(false);
+  const latest = app.versions[0];
+  return (
+    <div data-od-id={`page-app-${app.slug}`}>
+      <div className="breadcrumb"><Link to="/">应用目录</Link><span>/</span><span>{app.name}</span></div>
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 28 }}>
+        <div className="app-icon" style={{ background: app.color, width: 56, height: 56, fontSize: 18 }}>{app.initials}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-.02em" }}>{app.name}</h1>
+            <VisBadge v={app.visibility} />
+            <span className="mono muted">{app.latest}</span>
+          </div>
+          <p className="muted" style={{ marginTop: 6, maxWidth: 640 }}>{app.summary}</p>
+        </div>
+      </div>
+
+      <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>最新版本下载 · {latest.tag}</h2>
+      <DownloadGroups assets={latest.assets} onDownload={a => { onDownload(a); toast(`已开始下载 ${a.name}`); }} />
+
+      <h2 style={{ fontSize: 15, fontWeight: 600, margin: "28px 0 12px" }}>更新说明</h2>
+      <div className="changelog"><pre>{latest.changelog}</pre></div>
+
+      <div style={{ marginTop: 28 }}>
+        <button type="button" className="collapse-hd" onClick={() => setHistOpen(v => !v)} data-od-id="history-toggle">
+          <span>历史版本（{app.versions.length - 1}）</span>
+          <span className="muted">{histOpen ? "收起" : "展开"}</span>
+        </button>
+        {histOpen && (
+          <div className="ver-list">
+            {app.versions.slice(1).map(v => (
+              <div key={v.tag} className="ver-row">
+                <div style={{ flex: 1 }}>
+                  <Link to={`/a/${app.slug}/v/${v.tag}`} className="mono" style={{ fontWeight: 600 }}>{v.tag}</Link>
+                  <div className="muted" style={{ fontSize: 12 }}>{v.publishedAt} · {v.assets.length} 个资产</div>
+                </div>
+                <Link to={`/a/${app.slug}/v/${v.tag}`} className="btn btn-sm">查看</Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function VersionPage({ app, tag, onDownload, toast }) {
+  const ver = app.versions.find(v => v.tag === tag);
+  if (!ver) return <ForbiddenPage title="版本不存在" desc={`未找到 ${app.name} 的版本 ${tag}。`} />;
+  return (
+    <div data-od-id={`page-version-${tag}`}>
+      <div className="breadcrumb">
+        <Link to="/">应用目录</Link><span>/</span>
+        <Link to={`/a/${app.slug}`}>{app.name}</Link><span>/</span>
+        <span className="mono">{tag}</span>
+      </div>
+      <div className="page-hd" style={{ marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 24 }}>{app.name} <span className="mono muted">{tag}</span></h1>
+          <div className="sub">发布于 {ver.publishedAt} · {ver.assets.length} 个安装包</div>
+        </div>
+      </div>
+      <div className="table-wrap" style={{ marginBottom: 24 }}>
+        <table className="data">
+          <thead><tr><th>文件名</th><th>平台</th><th>大小</th><th>SHA256</th><th></th></tr></thead>
+          <tbody>
+            {ver.assets.map(a => (
+              <tr key={a.name}>
+                <td className="mono">{a.name}</td>
+                <td>{a.platform}</td>
+                <td className="mono">{a.size}</td>
+                <td className="mono muted" style={{ fontSize: 11 }} title={a.sha256}>{a.sha256.slice(0, 20)}…</td>
+                <td><button type="button" className="btn btn-primary btn-sm" onClick={() => { onDownload(a); toast(`已开始下载 ${a.name}`); }}><Icon d={I.download} size={14} />下载</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="changelog"><pre>{ver.changelog}</pre></div>
+    </div>
+  );
+}
+
+/* ========== Admin Pages ========== */
+function AdminLogin({ onLogin }) {
+  const [email, setEmail] = useState("qi@moonlab.io");
+  const [password, setPassword] = useState("••••••••");
+  return (
+    <div className="auth-wrap" data-od-id="page-admin-login">
+      <div className="auth-card">
+        <Logo />
+        <h1>管理后台登录</h1>
+        <p className="lead">仅内部成员可访问应用管理、同步任务与用户权限。</p>
+        <div className="auth-stack">
+          <div className="field"><label>邮箱</label><input className="input" value={email} onChange={e => setEmail(e.target.value)} /></div>
+          <div className="field"><label>密码</label><input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} /></div>
+          <button type="button" className="btn btn-primary btn-block" data-od-id="admin-login-submit" onClick={() => onLogin({ id: "u1", name: "陈启明", email, role: "admin" })}>登录</button>
+          <Link to="/" className="btn btn-ghost btn-block">返回下载站</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({ apps, jobs }) {
+  const failed = jobs.filter(j => j.status === "failed");
+  const recent = jobs.slice(0, 4);
+  return (
+    <div data-od-id="page-admin-dashboard">
+      <div className="page-hd">
+        <div><h1>仪表盘</h1><div className="sub">今日同步与队列概览</div></div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link to="/admin/apps/new" className="btn btn-primary"><Icon d={I.plus} size={15} />新建应用</Link>
+        </div>
+      </div>
+      <div className="stat-grid">
+        <div className="stat-card" data-od-id="stat-apps"><div className="label">应用数</div><div className="value">{apps.length}</div><div className="delta">公开 {apps.filter(a => a.visibility === "public").length} · 受限 {apps.filter(a => a.visibility !== "public").length}</div></div>
+        <div className="stat-card"><div className="label">启用同步</div><div className="value">{apps.filter(a => a.syncEnabled).length}</div><div className="delta">最近同步 09:12</div></div>
+        <div className="stat-card"><div className="label">队列失败</div><div className="value" style={{ color: failed.length ? "var(--danger)" : undefined }}>{failed.length}</div><div className="delta">需关注 GitHub 限流</div></div>
+        <div className="stat-card"><div className="label">今日任务</div><div className="value">{jobs.filter(j => j.createdAt.startsWith("2026-09-20")).length}</div><div className="delta">含 webhook / poll</div></div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16 }}>
+        <div className="card card-pad">
+          <div className="panel-title">最近任务</div>
+          <div className="table-wrap" style={{ border: "none" }}>
+            <table className="data">
+              <thead><tr><th>队列</th><th>应用</th><th>触发</th><th>状态</th><th>耗时</th></tr></thead>
+              <tbody>
+                {recent.map(j => (
+                  <tr key={j.id}>
+                    <td className="mono">{j.queue}</td>
+                    <td>{j.app}</td>
+                    <td><Pill tone="muted">{j.trigger}</Pill></td>
+                    <td><StatusJob s={j.status} /></td>
+                    <td className="mono muted">{j.duration}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ marginTop: 12 }}><Link to="/admin/jobs">查看全部任务 →</Link></div>
+        </div>
+        <div className="card card-pad">
+          <div className="panel-title">快捷入口</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <Link to="/admin/apps" className="btn" style={{ justifyContent: "flex-start" }}><Icon d={I.apps} size={15} />管理应用</Link>
+            <Link to="/admin/jobs" className="btn" style={{ justifyContent: "flex-start" }}><Icon d={I.jobs} size={15} />任务队列{failed.length > 0 && <Pill tone="danger">{failed.length} 失败</Pill>}</Link>
+            <Link to="/admin/settings" className="btn" style={{ justifyContent: "flex-start" }}><Icon d={I.settings} size={15} />系统设置</Link>
+          </div>
+          {failed.length > 0 && (
+            <div style={{ marginTop: 16, padding: 12, borderRadius: 8, background: "var(--danger-dim)", border: "1px solid oklch(65% 0.18 25 / 0.3)" }}>
+              <strong style={{ color: "var(--danger)", fontSize: 13 }}>失败任务</strong>
+              <div style={{ fontSize: 13, marginTop: 6 }} className="muted">{failed[0].message}</div>
+              <Link to="/admin/jobs" className="btn btn-sm" style={{ marginTop: 10 }}>去重试</Link>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppsList({ apps }) {
+  return (
+    <div data-od-id="page-admin-apps">
+      <div className="page-hd">
+        <div><h1>应用</h1><div className="sub">管理可见性、GitHub 同步与成员授权</div></div>
+        <Link to="/admin/apps/new" className="btn btn-primary"><Icon d={I.plus} size={15} />新建应用</Link>
+      </div>
+      <div className="table-wrap">
+        <table className="data">
+          <thead>
+            <tr><th>应用</th><th>Slug</th><th>可见性</th><th>同步</th><th>最新版本</th><th>最近同步</th><th></th></tr>
+          </thead>
+          <tbody>
+            {apps.map(a => (
+              <tr key={a.id} data-od-id={`admin-app-row-${a.slug}`}>
+                <td>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <div className="app-icon" style={{ background: a.color, width: 32, height: 32, fontSize: 11, borderRadius: 8 }}>{a.initials}</div>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{a.name}</div>
+                      <div className="muted" style={{ fontSize: 12 }}>{a.github ? `${a.github.owner}/${a.github.repo}` : "纯手动上传"}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="mono">{a.slug}</td>
+                <td><VisBadge v={a.visibility} /></td>
+                <td><SyncBadge s={a.syncStatus} /></td>
+                <td className="mono">{a.latest}</td>
+                <td className="mono muted" style={{ fontSize: 12 }}>{a.lastSyncAt}</td>
+                <td><Link to={`/admin/apps/${a.id}`} className="btn btn-sm">管理</Link></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AppForm({ initial, onSave, title }) {
+  const [form, setForm] = useState(initial || {
+    name: "", slug: "", githubOwner: "", githubRepo: "", visibility: "public",
+    syncEnabled: true, includeGlob: "*.{exe,dmg,AppImage,apk}", summary: "",
+  });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  return (
+    <div data-od-id="page-app-form">
+      <div className="page-hd"><div><h1>{title}</h1><div className="sub">GitHub 仓库可留空，表示纯手动上传应用</div></div></div>
+      <div className="card card-pad" style={{ maxWidth: 720 }}>
+        <div className="form-grid">
+          <div className="field"><label>应用名称</label><input className="input" value={form.name} onChange={e => set("name", e.target.value)} placeholder="MoonNotes" /></div>
+          <div className="field"><label>Slug</label><input className="input mono" value={form.slug} onChange={e => set("slug", e.target.value)} placeholder="moonnotes" /></div>
+          <div className="field span-2"><label>简介</label><textarea className="textarea" value={form.summary} onChange={e => set("summary", e.target.value)} /></div>
+          <div className="field"><label>GitHub Owner</label><input className="input mono" value={form.githubOwner} onChange={e => set("githubOwner", e.target.value)} placeholder="可空" /></div>
+          <div className="field"><label>GitHub Repo</label><input className="input mono" value={form.githubRepo} onChange={e => set("githubRepo", e.target.value)} placeholder="可空" /></div>
+          <div className="field"><label>可见性</label>
+            <select className="select" value={form.visibility} onChange={e => set("visibility", e.target.value)}>
+              <option value="public">公开 Public</option>
+              <option value="password">口令 Password</option>
+              <option value="login">登录 Login</option>
+            </select>
+          </div>
+          <div className="field"><label>Include Glob</label><input className="input mono" value={form.includeGlob} onChange={e => set("includeGlob", e.target.value)} /></div>
+          <div className="span-2">
+            <div className="switch-row">
+              <div><div style={{ fontWeight: 500 }}>启用 GitHub Release 同步</div><div className="hint">关闭后仅支持手动上传</div></div>
+              <label className="switch"><input type="checkbox" checked={form.syncEnabled} onChange={e => set("syncEnabled", e.target.checked)} /><span /></label>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
+          <Link to="/admin/apps" className="btn">取消</Link>
+          <button type="button" className="btn btn-primary" onClick={() => onSave(form)}>保存</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppAdminDetail({ app, onSync, onToast, users }) {
+  const [tab, setTab] = useState("overview");
+  const [uploadMode, setUploadMode] = useState("new"); // new | append
+  const [files, setFiles] = useState([]);
+  const [drag, setDrag] = useState(false);
+  const [overwrite, setOverwrite] = useState(null);
+  const [tag, setTag] = useState("");
+  const [members, setMembers] = useState(app.members);
+  const [addUser, setAddUser] = useState("");
+  const [addRole, setAddRole] = useState("viewer");
+  const fileRef = useRef(null);
+
+  const addFiles = (list) => {
+    const arr = Array.from(list || []);
+    let pendingOverwrite = null;
+    setFiles(prev => {
+      const next = [...prev];
+      arr.forEach(f => {
+        const dup = next.find(x => x.name === f.name);
+        if (dup) pendingOverwrite = { incoming: f, existing: dup };
+        else next.push({ name: f.name, size: ((f.size || 0) / 1024 / 1024).toFixed(1) + " MB", file: f });
+      });
+      return next;
+    });
+    if (pendingOverwrite) setOverwrite(pendingOverwrite);
+  };
+
+  const confirmOverwrite = () => {
+    if (!overwrite) return;
+    const f = overwrite.incoming;
+    setFiles(fs => {
+      const filtered = fs.filter(x => x.name !== f.name);
+      return [...filtered, { name: f.name, size: ((f.size || 0) / 1024 / 1024).toFixed(1) + " MB", file: f }];
+    });
+    setOverwrite(null);
+    onToast("已覆盖同名文件");
+  };
+
+  return (
+    <div data-od-id={`page-admin-app-${app.slug}`}>
+      <div className="breadcrumb"><Link to="/admin/apps">应用</Link><span>/</span><span>{app.name}</span></div>
+      <div className="page-hd">
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <div className="app-icon" style={{ background: app.color }}>{app.initials}</div>
+          <div>
+            <h1>{app.name}</h1>
+            <div className="sub mono">{app.slug} · {app.github ? `${app.github.owner}/${app.github.repo}` : "手动上传"}</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link to={`/admin/apps/${app.id}/edit`} className="btn btn-sm">编辑</Link>
+          <button type="button" className="btn btn-sm" onClick={() => { onSync(app.id); onToast("已触发手动同步"); }} disabled={!app.syncEnabled}><Icon d={I.sync} size={14} />手动同步</button>
+          <Link to={`/a/${app.slug}`} className="btn btn-sm">预览下载页</Link>
+        </div>
+      </div>
+      <div className="tabs" data-od-id="app-detail-tabs">
+        {[["overview", "概览"], ["versions", "版本"], ["upload", "手动上传"], ["members", "成员授权"], ["webhook", "Webhook"]].map(([k, l]) => (
+          <button key={k} type="button" className={`tab ${tab === k ? "active" : ""}`} onClick={() => setTab(k)}>{l}</button>
+        ))}
+      </div>
+
+      {tab === "overview" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="card card-pad">
+            <div className="panel-title">状态</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">可见性</span><VisBadge v={app.visibility} /></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">同步</span><SyncBadge s={app.syncStatus} /></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">最新版本</span><span className="mono">{app.latest}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">最近同步</span><span className="mono">{app.lastSyncAt}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">Include</span><span className="mono" style={{ fontSize: 12 }}>{app.includeGlob || "—"}</span></div>
+            </div>
+          </div>
+          <div className="card card-pad">
+            <div className="panel-title">简介</div>
+            <p style={{ fontSize: 14, color: "var(--muted)" }}>{app.summary}</p>
+          </div>
+        </div>
+      )}
+
+      {tab === "versions" && (
+        <div className="table-wrap">
+          <table className="data">
+            <thead><tr><th>Tag</th><th>发布日期</th><th>资产数</th><th></th></tr></thead>
+            <tbody>
+              {app.versions.map(v => (
+                <tr key={v.tag}>
+                  <td className="mono">{v.tag}</td>
+                  <td>{v.publishedAt}</td>
+                  <td>{v.assets.length}</td>
+                  <td><Link to={`/a/${app.slug}/v/${v.tag}`} className="btn btn-sm">查看</Link></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tab === "upload" && (
+        <div data-od-id="upload-panel">
+          <div className="filter-chips" style={{ marginBottom: 16 }}>
+            <button type="button" className={`chip ${uploadMode === "new" ? "active" : ""}`} onClick={() => setUploadMode("new")}>新建版本 + 多文件</button>
+            <button type="button" className={`chip ${uploadMode === "append" ? "active" : ""}`} onClick={() => setUploadMode("append")}>向已有版本补传</button>
+          </div>
+          {uploadMode === "new" ? (
+            <div className="field" style={{ maxWidth: 320, marginBottom: 14 }}>
+              <label>版本 Tag</label>
+              <input className="input mono" placeholder="v1.0.0" value={tag} onChange={e => setTag(e.target.value)} />
+            </div>
+          ) : (
+            <div className="field" style={{ maxWidth: 320, marginBottom: 14 }}>
+              <label>目标版本</label>
+              <select className="select" value={tag || app.versions[0]?.tag} onChange={e => setTag(e.target.value)}>
+                {app.versions.map(v => <option key={v.tag} value={v.tag}>{v.tag}</option>)}
+              </select>
+            </div>
+          )}
+          <div
+            className={`dropzone ${drag ? "drag" : ""}`}
+            data-od-id="dropzone"
+            onDragOver={e => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={e => { e.preventDefault(); setDrag(false); addFiles(e.dataTransfer.files); }}
+            onClick={() => fileRef.current?.click()}
+          >
+            <Icon d={I.upload} size={28} />
+            <div className="dz-title" style={{ marginTop: 10 }}>拖拽安装包到此处，或点击选择</div>
+            <div className="muted" style={{ fontSize: 13 }}>支持多文件 · 同名将二次确认覆盖</div>
+            <input ref={fileRef} type="file" multiple hidden onChange={e => addFiles(e.target.files)} />
+          </div>
+          {files.length > 0 && (
+            <div className="file-list" data-od-id="upload-file-list">
+              {files.map(f => (
+                <div key={f.name} className="file-row">
+                  <Icon d={I.apps} size={16} />
+                  <span className="name" title={f.name}>{f.name}</span>
+                  <span className="mono muted" style={{ fontSize: 12 }}>{f.size}</span>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFiles(fs => fs.filter(x => x.name !== f.name))}><Icon d={I.x} size={14} /></button>
+                </div>
+              ))}
+              <button type="button" className="btn btn-primary" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={() => { onToast(`已提交上传 ${files.length} 个文件${tag ? " → " + tag : ""}`); setFiles([]); }}>提交上传</button>
+            </div>
+          )}
+          <Modal
+            open={!!overwrite}
+            title="确认覆盖同名文件？"
+            onClose={() => setOverwrite(null)}
+            footer={
+              <>
+                <button type="button" className="btn" onClick={() => setOverwrite(null)}>取消</button>
+                <button type="button" className="btn btn-danger" data-od-id="overwrite-confirm" onClick={confirmOverwrite}>覆盖 Overwrite</button>
+              </>
+            }
+          >
+            文件 <span className="mono">{overwrite?.incoming?.name}</span> 已在列表中。继续将替换本地待上传文件，此操作不可撤销（示意）。
+          </Modal>
+        </div>
+      )}
+
+      {tab === "members" && (
+        <div data-od-id="members-panel">
+          <div className="card card-pad" style={{ marginBottom: 16 }}>
+            <div className="panel-title">添加成员</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <select className="select" style={{ width: 220 }} value={addUser} onChange={e => setAddUser(e.target.value)}>
+                <option value="">选择用户…</option>
+                {users.filter(u => !members.some(m => m.userId === u.id)).map(u => (
+                  <option key={u.id} value={u.id}>{u.name} · {u.email}</option>
+                ))}
+              </select>
+              <select className="select" style={{ width: 180 }} value={addRole} onChange={e => setAddRole(e.target.value)}>
+                <option value="viewer">viewer 查看者</option>
+                <option value="operator">operator 操作员</option>
+                <option value="manager">manager 管理员</option>
+              </select>
+              <button type="button" className="btn btn-primary" onClick={() => {
+                const u = users.find(x => x.id === addUser);
+                if (!u) return;
+                setMembers(m => [...m, { userId: u.id, name: u.name, email: u.email, role: addRole }]);
+                setAddUser("");
+                onToast(`已添加 ${u.name}`);
+              }}>添加</button>
+            </div>
+          </div>
+          {members.map(m => (
+            <div key={m.userId} className="member-row" data-od-id={`member-${m.userId}`}>
+              <span className="avatar">{m.name.slice(0, 1)}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600 }}>{m.name}</div>
+                <div className="muted" style={{ fontSize: 12 }}>{m.email}</div>
+              </div>
+              <select className="select" style={{ width: 160 }} value={m.role} onChange={e => setMembers(ms => ms.map(x => x.userId === m.userId ? { ...x, role: e.target.value } : x))}>
+                <option value="viewer">viewer</option>
+                <option value="operator">operator</option>
+                <option value="manager">manager</option>
+              </select>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMembers(ms => ms.filter(x => x.userId !== m.userId))}>移除</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === "webhook" && (
+        <div className="card card-pad" data-od-id="webhook-panel">
+          <div className="panel-title">GitHub Webhook 配置说明</div>
+          <ol style={{ paddingLeft: 18, color: "var(--muted)", fontSize: 14, lineHeight: 1.7, marginBottom: 14 }}>
+            <li>在 GitHub 仓库 Settings → Webhooks 新建 Hook</li>
+            <li>Payload URL 填入下方地址，Content type 选 <span className="mono">application/json</span></li>
+            <li>事件勾选 <strong style={{ color: "var(--fg)" }}>Releases</strong></li>
+            <li>Secret 与系统设置中的 Webhook Secret 保持一致</li>
+          </ol>
+          <div className="webhook-box">https://dl.example.com/api/hooks/github/{app.id}</div>
+          <button type="button" className="btn btn-sm" style={{ marginTop: 12 }} onClick={() => onToast("已复制 Webhook URL")}><Icon d={I.copy} size={14} />复制 URL</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UsersPage({ users, onToast }) {
+  const [list, setList] = useState(users);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", role: "operator" });
+  return (
+    <div data-od-id="page-admin-users">
+      <div className="page-hd">
+        <div><h1>用户管理</h1><div className="sub">系统角色与账号启停（admin）</div></div>
+        <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}><Icon d={I.plus} size={15} />创建用户</button>
+      </div>
+      <div className="table-wrap">
+        <table className="data">
+          <thead><tr><th>用户</th><th>邮箱</th><th>角色</th><th>状态</th><th>最近登录</th><th></th></tr></thead>
+          <tbody>
+            {list.map(u => (
+              <tr key={u.id}>
+                <td style={{ fontWeight: 600 }}>{u.name}</td>
+                <td className="mono" style={{ fontSize: 12 }}>{u.email}</td>
+                <td><Pill tone="accent">{ROLE_LABELS[u.role] || u.role}</Pill></td>
+                <td>{u.status === "active" ? <Pill tone="success">启用</Pill> : <Pill tone="muted">禁用</Pill>}</td>
+                <td className="mono muted" style={{ fontSize: 12 }}>{u.lastLogin}</td>
+                <td>
+                  <button type="button" className="btn btn-sm" onClick={() => {
+                    setList(ls => ls.map(x => x.id === u.id ? { ...x, status: x.status === "active" ? "disabled" : "active" } : x));
+                    onToast(u.status === "active" ? `已禁用 ${u.name}` : `已启用 ${u.name}`);
+                  }}>{u.status === "active" ? "禁用" : "启用"}</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Modal open={open} title="创建用户" onClose={() => setOpen(false)} footer={
+        <>
+          <button type="button" className="btn" onClick={() => setOpen(false)}>取消</button>
+          <button type="button" className="btn btn-primary" onClick={() => {
+            if (!form.name || !form.email) return;
+            setList(ls => [...ls, { id: "u" + Date.now(), ...form, status: "active", lastLogin: "—" }]);
+            setOpen(false); setForm({ name: "", email: "", role: "operator" }); onToast("用户已创建");
+          }}>创建</button>
+        </>
+      }>
+        <div className="auth-stack">
+          <div className="field"><label>姓名</label><input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+          <div className="field"><label>邮箱</label><input className="input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+          <div className="field"><label>角色</label>
+            <select className="select" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
+              <option value="admin">admin</option>
+              <option value="operator">operator</option>
+              <option value="viewer">viewer</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function JobsPage({ jobs, onToast }) {
+  const [q, setQ] = useState("all");
+  const list = jobs.filter(j => q === "all" || j.queue === q);
+  return (
+    <div data-od-id="page-admin-jobs">
+      <div className="page-hd">
+        <div><h1>任务队列</h1><div className="sub">release-sync / asset-download / notify</div></div>
+      </div>
+      <div className="filter-chips" style={{ marginBottom: 16 }}>
+        {["all", "release-sync", "asset-download", "notify"].map(x => (
+          <button key={x} type="button" className={`chip ${q === x ? "active" : ""}`} onClick={() => setQ(x)}>{x === "all" ? "全部队列" : x}</button>
+        ))}
+      </div>
+      <div className="table-wrap">
+        <table className="data">
+          <thead><tr><th>ID</th><th>队列</th><th>应用</th><th>Trigger</th><th>状态</th><th>耗时</th><th>时间</th><th>消息</th><th></th></tr></thead>
+          <tbody>
+            {list.map(j => (
+              <tr key={j.id} data-od-id={`job-row-${j.id}`}>
+                <td className="mono" style={{ fontSize: 12 }}>{j.id}</td>
+                <td className="mono">{j.queue}</td>
+                <td>{j.app}</td>
+                <td><Pill tone="muted">{j.trigger}</Pill></td>
+                <td><StatusJob s={j.status} /></td>
+                <td className="mono">{j.duration}</td>
+                <td className="mono muted" style={{ fontSize: 12 }}>{j.createdAt}</td>
+                <td style={{ maxWidth: 220, fontSize: 12 }} className="muted">{j.message}</td>
+                <td>{j.status === "failed" && <button type="button" className="btn btn-sm" onClick={() => onToast(`已重试 ${j.id}`)}>重试</button>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SettingsPage({ settings, setSettings, onToast }) {
+  return (
+    <div data-od-id="page-admin-settings">
+      <div className="page-hd"><div><h1>系统设置</h1><div className="sub">站点与同步基础设施</div></div></div>
+      <div className="card card-pad" style={{ maxWidth: 640 }}>
+        <div className="form-grid">
+          <div className="field span-2"><label>站点名称</label><input className="input" value={settings.siteName} onChange={e => setSettings(s => ({ ...s, siteName: e.target.value }))} /></div>
+          <div className="field"><label>轮询间隔（分钟）</label><input className="input mono" type="number" value={settings.pollIntervalMin} onChange={e => setSettings(s => ({ ...s, pollIntervalMin: Number(e.target.value) }))} /></div>
+          <div className="field"><label>上传大小上限（MB）</label><input className="input mono" type="number" value={settings.uploadMaxMb} onChange={e => setSettings(s => ({ ...s, uploadMaxMb: Number(e.target.value) }))} /></div>
+          <div className="field span-2"><label>对外 Base URL</label><input className="input mono" value={settings.publicBaseUrl} onChange={e => setSettings(s => ({ ...s, publicBaseUrl: e.target.value }))} /></div>
+          <div className="span-2">
+            <div className="switch-row">
+              <div>
+                <div style={{ fontWeight: 500 }}>GitHub Token</div>
+                <div className="hint">{settings.githubTokenConfigured ? "已配置 · 末尾 …k9f2" : "未配置"}</div>
+              </div>
+              <Pill tone={settings.githubTokenConfigured ? "success" : "warn"}>{settings.githubTokenConfigured ? "已配置" : "未配置"}</Pill>
+            </div>
+          </div>
+        </div>
+        <button type="button" className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => onToast("设置已保存")}>保存设置</button>
+      </div>
+    </div>
+  );
+}
+
+/* ========== App Root ========== */
+function App() {
+  const [route, setRoute] = useState(parseHash);
+  const [adminUser, setAdminUser] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("ad:admin") || "null"); } catch { return null; }
+  });
+  const [publicUser, setPublicUser] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("ad:pub") || "null"); } catch { return null; }
+  });
+  const [unlocked, setUnlocked] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("ad:pw") || "{}"); } catch { return {}; }
+  });
+  const [apps, setApps] = useState(APPS);
+  const [jobs] = useState(JOBS);
+  const [settings, setSettings] = useState(SETTINGS_DEFAULT);
+  const [toast, setToast] = useState("");
+
+  useEffect(() => {
+    const onHash = () => setRoute(parseHash());
+    window.addEventListener("hashchange", onHash);
+    if (!location.hash) location.hash = "/";
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  const showToast = useCallback(m => setToast(m), []);
+
+  const requireAdmin = (node) => {
+    if (!adminUser) return <AdminLogin onLogin={u => { setAdminUser(u); sessionStorage.setItem("ad:admin", JSON.stringify(u)); navigate("/admin"); }} />;
+    return <AdminShell route={route} user={adminUser} onLogout={() => { setAdminUser(null); sessionStorage.removeItem("ad:admin"); navigate("/admin/login"); }}>{node}</AdminShell>;
+  };
+
+  const gateApp = (app, inner) => {
+    if (!app) return <PublicShell route={route}><ForbiddenPage title="应用不存在" desc="找不到该应用，可能已被下线或 slug 错误。" /></PublicShell>;
+    if (app.visibility === "password" && !unlocked[app.slug]) {
+      return <PasswordGate app={app} onUnlock={slug => {
+        const next = { ...unlocked, [slug]: true };
+        setUnlocked(next);
+        sessionStorage.setItem("ad:pw", JSON.stringify(next));
+      }} />;
+    }
+    if (app.visibility === "login" && !publicUser) {
+      return <PublicLogin onLogin={(u, redir) => { setPublicUser(u); sessionStorage.setItem("ad:pub", JSON.stringify(u)); navigate(redir || `/a/${app.slug}`); }} redirect={`/a/${app.slug}`} />;
+    }
+    return <PublicShell route={route}>{inner}</PublicShell>;
+  };
+
+  const { parts, path } = route;
+  let view = null;
+
+  // Admin routes
+  if (path === "/admin/login") {
+    view = <AdminLogin onLogin={u => { setAdminUser(u); sessionStorage.setItem("ad:admin", JSON.stringify(u)); navigate("/admin"); }} />;
+  } else if (path === "/admin" || path.startsWith("/admin/")) {
+    if (path === "/admin") view = requireAdmin(<Dashboard apps={apps} jobs={jobs} />);
+    else if (path === "/admin/apps") view = requireAdmin(<AppsList apps={apps} />);
+    else if (path === "/admin/apps/new") view = requireAdmin(
+      <AppForm title="新建应用" onSave={f => {
+        const id = "app_" + f.slug;
+        setApps(a => [...a, {
+          id, name: f.name, slug: f.slug, summary: f.summary || "新应用",
+          visibility: f.visibility, syncEnabled: f.syncEnabled,
+          github: f.githubOwner ? { owner: f.githubOwner, repo: f.githubRepo } : null,
+          includeGlob: f.includeGlob, color: "oklch(72% 0.13 195)", initials: (f.name || "AP").slice(0, 2).toUpperCase(),
+          platforms: ["Windows"], latest: "—", syncStatus: f.syncEnabled ? "ok" : "manual", lastSyncAt: "—",
+          members: [], versions: [],
+        }]);
+        showToast("应用已创建");
+        navigate("/admin/apps");
+      }} />
+    );
+    else if (parts[0] === "admin" && parts[1] === "apps" && parts[2] && parts[3] === "edit") {
+      const app = apps.find(a => a.id === parts[2]);
+      view = requireAdmin(app ? (
+        <AppForm title={`编辑 ${app.name}`} initial={{
+          name: app.name, slug: app.slug, summary: app.summary,
+          githubOwner: app.github?.owner || "", githubRepo: app.github?.repo || "",
+          visibility: app.visibility, syncEnabled: app.syncEnabled, includeGlob: app.includeGlob || "",
+        }} onSave={f => { showToast("应用已更新"); navigate(`/admin/apps/${app.id}`); }} />
+      ) : <ForbiddenPage title="应用不存在" />);
+    } else if (parts[0] === "admin" && parts[1] === "apps" && parts[2]) {
+      const app = apps.find(a => a.id === parts[2]);
+      view = requireAdmin(app ? (
+        <AppAdminDetail app={app} users={USERS} onSync={() => {}} onToast={showToast} />
+      ) : <ForbiddenPage title="应用不存在" />);
+    } else if (path === "/admin/users") view = requireAdmin(<UsersPage users={USERS} onToast={showToast} />);
+    else if (path === "/admin/jobs") view = requireAdmin(<JobsPage jobs={jobs} onToast={showToast} />);
+    else if (path === "/admin/settings") view = requireAdmin(<SettingsPage settings={settings} setSettings={setSettings} onToast={showToast} />);
+    else view = requireAdmin(<ForbiddenPage title="页面不存在" desc="管理端路由未匹配。" />);
+  } else if (path === "/login") {
+    view = <PublicLogin onLogin={(u) => { setPublicUser(u); sessionStorage.setItem("ad:pub", JSON.stringify(u)); navigate("/"); }} />;
+  } else if (path === "/empty" || path === "/forbidden") {
+    view = <PublicShell route={route}><ForbiddenPage /></PublicShell>;
+  } else if (parts[0] === "a" && parts[1] && parts[2] === "v" && parts[3]) {
+    const app = apps.find(a => a.slug === parts[1]);
+    view = gateApp(app, <VersionPage app={app} tag={parts[3]} onDownload={() => {}} toast={showToast} />);
+  } else if (parts[0] === "a" && parts[1]) {
+    const app = apps.find(a => a.slug === parts[1]);
+    view = gateApp(app, <AppDetailPage app={app} onDownload={() => {}} toast={showToast} />);
+  } else if (path === "/" || path === "") {
+    view = <PublicShell route={route}><HomePage apps={apps} /></PublicShell>;
+  } else {
+    view = <PublicShell route={route}><ForbiddenPage title="页面不存在" desc="请从首页进入，或检查链接是否正确。" /></PublicShell>;
+  }
+
+  return (
+    <>
+      {view}
+      <Toast msg={toast} onDone={() => setToast("")} />
+    </>
+  );
+}
+
+Object.assign(window, { App });
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
