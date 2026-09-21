@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AppDock — 应用构建与分发中心</title>
   <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
@@ -239,7 +239,7 @@
 </head>
 <body>
   <div id="root"></div>
-  <script data-presets="react" type="text/babel">
+  <script type="text/babel" data-presets="react">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 /* ========== Icons (inline SVG) ========== */
@@ -261,6 +261,7 @@ const I = {
   check: "M5 13l4 4L19 7",
   x: "M6 6l12 12M18 6L6 18",
   lock: "M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5V11z",
+  key: "M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.78 7.78 5.5 5.5 0 0 1 7.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4",
   alert: "M12 9v4m0 4h.01M10.3 4.3L2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z",
   copy: "M8 8h12v12H8V8zm-4 4h2v10h10v2H4V12z",
   external: "M14 4h6v6M10 14L20 4M20 14v6H4V4h6",
@@ -287,7 +288,14 @@ const APPS = [
     slug: "moonnotes",
     summary: "跨平台 Markdown 笔记与知识库，支持双向链接与离线同步。",
     visibility: "public",
+    releaseProvider: "github",
+    releaseOwner: "moonlab",
+    releaseRepo: "moonnotes",
+    releaseBaseUrl: "",
     syncEnabled: true,
+    syncWebhookEnabled: true,
+    syncPollEnabled: true,
+    syncPollIntervalMin: "",
     github: { owner: "moonlab", repo: "moonnotes" },
     includeGlob: "*.{exe,dmg,AppImage,apk}",
     color: "oklch(72% 0.13 195)",
@@ -296,14 +304,33 @@ const APPS = [
     latest: "v2.4.1",
     syncStatus: "ok",
     lastSyncAt: "2026-09-20 09:12",
+    notifyEnabled: true,
+    notifyOnSyncSuccess: true,
+    notifyOnSyncFailure: true,
+    notifyOnManualUpload: false,
+    notifyEmails: "release@moonlab.io\nops@moonlab.io",
+    notifyMembers: true,
+    notifyMemberRoles: ["manager", "operator"],
+    notifyUseGlobalFallback: true,
     members: [
       { userId: "u1", name: "陈启明", email: "qi@moonlab.io", role: "manager" },
       { userId: "u2", name: "林晓", email: "lin@moonlab.io", role: "operator" },
     ],
     versions: [
       {
+        tag: "v2.5.0-beta.1",
+        publishedAt: "2026-09-19",
+        isPrerelease: true,
+        changelog: "## v2.5.0-beta.1\n- 实验性 AI 摘要\n- 仅供内测",
+        assets: [
+          { name: "MoonNotes-2.5.0-beta.1-win-x64.exe", platform: "Windows", size: "69.0 MB", sha256: "11aa22bb33cc44dd55ee66ff77889900112233445566778899aabbccddeeff00", url: "#" },
+          { name: "MoonNotes-2.5.0-beta.1-mac-universal.dmg", platform: "macOS", size: "75.2 MB", sha256: "22bb33cc44dd55ee66ff77889900112233445566778899aabbccddeeff0011aa", url: "#" },
+        ],
+      },
+      {
         tag: "v2.4.1",
         publishedAt: "2026-09-18",
+        isPrerelease: false,
         changelog: "## v2.4.1\n- 修复 Windows 安装器签名校验\n- Android 支持 Scoped Storage\n- 同步冲突提示优化",
         assets: [
           { name: "MoonNotes-2.4.1-win-x64.exe", platform: "Windows", size: "68.2 MB", sha256: "a3f1c8e92b7d4e6f1a0c5b8d9e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f", url: "#" },
@@ -315,6 +342,7 @@ const APPS = [
       {
         tag: "v2.4.0",
         publishedAt: "2026-09-01",
+        isPrerelease: false,
         changelog: "## v2.4.0\n- 新增画布白板\n- 性能优化",
         assets: [
           { name: "MoonNotes-2.4.0-win-x64.exe", platform: "Windows", size: "67.9 MB", sha256: "e7b5a2c36f1b8c0d5e4a9f2b3c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d", url: "#" },
@@ -324,6 +352,7 @@ const APPS = [
       {
         tag: "v2.3.8",
         publishedAt: "2026-08-12",
+        isPrerelease: false,
         changelog: "## v2.3.8\n- 安全补丁",
         assets: [
           { name: "MoonNotes-2.3.8-win-x64.exe", platform: "Windows", size: "66.4 MB", sha256: "09d7c4e58b3d0e2f7a6c1b4d5e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f", url: "#" },
@@ -337,7 +366,14 @@ const APPS = [
     slug: "forgedesk",
     summary: "工程师桌面工具箱：终端、任务看板与本地 API Mock。",
     visibility: "password",
+    releaseProvider: "github",
+    releaseOwner: "forgeco",
+    releaseRepo: "forgedesk",
+    releaseBaseUrl: "",
     syncEnabled: true,
+    syncWebhookEnabled: false,
+    syncPollEnabled: true,
+    syncPollIntervalMin: 30,
     github: { owner: "forgeco", repo: "forgedesk" },
     includeGlob: "ForgeDesk-*.{msi,dmg}",
     color: "oklch(70% 0.14 145)",
@@ -346,7 +382,14 @@ const APPS = [
     latest: "v1.8.0",
     syncStatus: "syncing",
     lastSyncAt: "2026-09-20 10:01",
-    passwordHint: "团队内部分发口令",
+    notifyEnabled: true,
+    notifyOnSyncSuccess: false,
+    notifyOnSyncFailure: true,
+    notifyOnManualUpload: false,
+    notifyEmails: "alerts@forge.co",
+    notifyMembers: true,
+    notifyMemberRoles: ["manager"],
+    notifyUseGlobalFallback: false,
     members: [
       { userId: "u1", name: "陈启明", email: "qi@moonlab.io", role: "manager" },
       { userId: "u3", name: "赵宁", email: "zhao@forge.co", role: "viewer" },
@@ -354,8 +397,10 @@ const APPS = [
     versions: [
       {
         tag: "v1.8.0",
-        publishedAt: "2026-09-19",
+        publishedAt: "2026-09-10",
+        isPrerelease: false,
         changelog: "## v1.8.0\n- Mock Server 支持 OpenAPI 3.1\n- 终端分屏",
+
         assets: [
           { name: "ForgeDesk-1.8.0-win-x64.msi", platform: "Windows", size: "92.3 MB", sha256: "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f80", url: "#" },
           { name: "ForgeDesk-1.8.0-mac-arm64.dmg", platform: "macOS", size: "88.6 MB", sha256: "2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091", url: "#" },
@@ -364,6 +409,7 @@ const APPS = [
       {
         tag: "v1.7.2",
         publishedAt: "2026-08-28",
+        isPrerelease: false,
         changelog: "## v1.7.2\n- 修复 MSI 静默安装",
         assets: [
           { name: "ForgeDesk-1.7.2-win-x64.msi", platform: "Windows", size: "91.0 MB", sha256: "3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2", url: "#" },
@@ -377,7 +423,14 @@ const APPS = [
     slug: "pixelsync",
     summary: "设计稿与工程资源同步桥，支持 Figma 导出管道。",
     visibility: "login",
+    releaseProvider: "none",
+    releaseOwner: "",
+    releaseRepo: "",
+    releaseBaseUrl: "",
     syncEnabled: false,
+    syncWebhookEnabled: false,
+    syncPollEnabled: false,
+    syncPollIntervalMin: "",
     github: null,
     includeGlob: "",
     color: "oklch(68% 0.12 250)",
@@ -386,6 +439,14 @@ const APPS = [
     latest: "v0.9.3",
     syncStatus: "manual",
     lastSyncAt: "—",
+    notifyEnabled: false,
+    notifyOnSyncSuccess: false,
+    notifyOnSyncFailure: false,
+    notifyOnManualUpload: false,
+    notifyEmails: "",
+    notifyMembers: false,
+    notifyMemberRoles: [],
+    notifyUseGlobalFallback: true,
     members: [
       { userId: "u2", name: "林晓", email: "lin@moonlab.io", role: "operator" },
     ],
@@ -393,6 +454,7 @@ const APPS = [
       {
         tag: "v0.9.3",
         publishedAt: "2026-09-15",
+        isPrerelease: false,
         changelog: "## v0.9.3\n- 手动上传首发包\n- Linux AppImage 试验构建",
         assets: [
           { name: "PixelSync-0.9.3-Setup.exe", platform: "Windows", size: "54.1 MB", sha256: "4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3", url: "#" },
@@ -402,34 +464,158 @@ const APPS = [
       },
     ],
   },
+  {
+    id: "app_archivedemo",
+    name: "ArchiveDemo",
+    slug: "archivedemo",
+    summary: "已归档示意应用，对外应显示 404。",
+    visibility: "public",
+    status: "archived",
+    releaseProvider: "none",
+    releaseOwner: "",
+    releaseRepo: "",
+    releaseBaseUrl: "",
+    syncEnabled: false,
+    syncWebhookEnabled: false,
+    syncPollEnabled: false,
+    syncPollIntervalMin: "",
+    github: null,
+    includeGlob: "",
+    color: "oklch(55% 0.02 250)",
+    initials: "AD",
+    platforms: ["Windows"],
+    latest: "v0.1.0",
+    syncStatus: "manual",
+    lastSyncAt: "—",
+    notifyEnabled: false,
+    notifyOnSyncSuccess: false,
+    notifyOnSyncFailure: false,
+    notifyOnManualUpload: false,
+    notifyEmails: "",
+    notifyMembers: false,
+    notifyMemberRoles: [],
+    notifyUseGlobalFallback: true,
+    members: [],
+    versions: [
+      {
+        tag: "v0.1.0",
+        publishedAt: "2026-01-01",
+        isPrerelease: false,
+        changelog: "## v0.1.0\n- 归档示意",
+        assets: [
+          { name: "ArchiveDemo-0.1.0.exe", platform: "Windows", size: "1.0 MB", sha256: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", url: "#" },
+        ],
+      },
+    ],
+  },
 ];
 
 const USERS = [
   { id: "u1", name: "陈启明", email: "qi@moonlab.io", role: "admin", status: "active", lastLogin: "2026-09-20 08:40" },
-  { id: "u2", name: "林晓", email: "lin@moonlab.io", role: "operator", status: "active", lastLogin: "2026-09-19 21:15" },
-  { id: "u3", name: "赵宁", email: "zhao@forge.co", role: "viewer", status: "active", lastLogin: "2026-09-18 14:02" },
-  { id: "u4", name: "周岚", email: "zhou@moonlab.io", role: "operator", status: "disabled", lastLogin: "2026-07-02 11:20" },
+  { id: "u2", name: "林晓", email: "lin@moonlab.io", role: "user", status: "active", lastLogin: "2026-09-19 21:15" },
+  { id: "u3", name: "赵宁", email: "zhao@forge.co", role: "user", status: "active", lastLogin: "2026-09-18 14:02" },
+  { id: "u4", name: "周岚", email: "zhou@moonlab.io", role: "user", status: "disabled", lastLogin: "2026-07-02 11:20" },
 ];
 
 const JOBS = [
-  { id: "job_8812", queue: "release-sync", app: "MoonNotes", trigger: "webhook", status: "success", duration: "12.4s", createdAt: "2026-09-20 09:12:03", message: "Synced release v2.4.1 · 4 assets" },
-  { id: "job_8811", queue: "asset-download", app: "ForgeDesk", trigger: "poll", status: "running", duration: "41s", createdAt: "2026-09-20 10:01:18", message: "Downloading ForgeDesk-1.8.0-mac-arm64.dmg" },
-  { id: "job_8809", queue: "notify", app: "MoonNotes", trigger: "manual", status: "success", duration: "0.8s", createdAt: "2026-09-20 09:12:16", message: "Webhook notify OK" },
-  { id: "job_8802", queue: "asset-download", app: "ForgeDesk", trigger: "poll", status: "failed", duration: "62.1s", createdAt: "2026-09-19 22:40:11", message: "GitHub 429 rate limit · retry scheduled" },
-  { id: "job_8798", queue: "release-sync", app: "PixelSync", trigger: "manual", status: "success", duration: "3.2s", createdAt: "2026-09-15 16:05:44", message: "Manual upload registered v0.9.3" },
+  { id: "job_8812", queue: "release-sync", app: "MoonNotes", trigger: "webhook", status: "success", duration: "12.4s", createdAt: "2026-09-20 09:12:03", message: "Synced release v2.4.1 · 4 assets", logs: ["09:12:03 enqueue release-sync", "09:12:04 fetch GitHub release v2.4.1", "09:12:08 download 4 assets ok", "09:12:15 notify queued"] },
+  { id: "job_8811", queue: "asset-download", app: "ForgeDesk", trigger: "poll", status: "running", duration: "41s", createdAt: "2026-09-20 10:01:18", message: "Downloading ForgeDesk-1.8.0-mac-arm64.dmg", logs: ["10:01:18 start asset-download", "10:01:19 GET githubusercontent …dmg", "10:01:40 62% · 55 MB"] },
+  { id: "job_8809", queue: "notify", app: "MoonNotes", trigger: "webhook", status: "success", duration: "0.8s", createdAt: "2026-09-20 09:12:16", message: "Email sync.success → 3 recipients", logs: ["09:12:16 render template sync.success", "09:12:16 SMTP send ok"] },
+  { id: "job_8805", queue: "notify", app: "ForgeDesk", trigger: "poll", status: "failed", duration: "1.2s", createdAt: "2026-09-20 08:55:02", message: "Email sync.failure → SMTP timeout", logs: ["08:55:02 render template sync.failure", "08:55:03 connect smtp.example.com:465", "08:55:04 ETIMEDOUT"] },
+  { id: "job_8802", queue: "asset-download", app: "ForgeDesk", trigger: "poll", status: "failed", duration: "62.1s", createdAt: "2026-09-19 22:40:11", message: "GitHub 429 rate limit · retry scheduled", logs: ["22:40:11 start download", "22:41:12 HTTP 429 X-RateLimit-Remaining: 0", "22:41:13 schedule retry +15m"] },
+  { id: "job_8798", queue: "release-sync", app: "PixelSync", trigger: "manual", status: "success", duration: "3.2s", createdAt: "2026-09-15 16:05:44", message: "Manual upload registered v0.9.3", logs: ["16:05:44 register manual version v0.9.3", "16:05:47 3 assets stored"] },
+  { id: "job_8797", queue: "notify", app: "PixelSync", trigger: "manual", status: "success", duration: "0.6s", createdAt: "2026-09-15 16:05:50", message: "Email upload.success → 1 recipient", logs: ["16:05:50 SMTP send ok"] },
 ];
 
 const SETTINGS_DEFAULT = {
   siteName: "AppDock",
   pollIntervalMin: 15,
   uploadMaxMb: 512,
+  storageRoot: "/data/files",
   githubTokenConfigured: true,
+  webhookSecretConfigured: true,
   publicBaseUrl: "https://dl.example.com",
+  smtpEnabled: true,
+  smtpHost: "smtp.example.com",
+  smtpPort: 465,
+  smtpEncryption: "ssl_tls",
+  smtpUsername: "noreply@dl.example.com",
+  smtpPasswordSet: true,
+  smtpFromName: "AppDock",
+  smtpFromEmail: "noreply@dl.example.com",
+  smtpReplyTo: "",
+  smtpConnectTimeoutSec: 15,
+  smtpDefaultRecipients: "ops@moonlab.io\nrelease@moonlab.io",
 };
 
+/** 全局访问口令；plainCode 示意校验/再复制用，列表仅显示前缀掩码 */
+const ACCESS_CODES_DEFAULT = [
+  {
+    id: "ac_q3",
+    note: "Q3 内测群",
+    codePrefix: "dock_ab12",
+    plainCode: "dock_demo_forge_2026",
+    status: "active",
+    expiresAt: "2026-12-31 23:59",
+    maxUses: 50,
+    usedCount: 12,
+    appIds: ["app_forgedesk"],
+    createdBy: "陈启明",
+    lastUsedAt: "2026-09-19 16:22",
+  },
+  {
+    id: "ac_channel",
+    note: "渠道商临时",
+    codePrefix: "dock_ch9x",
+    plainCode: "dock_channel_temp_xx",
+    status: "disabled",
+    expiresAt: "2026-09-25 18:00",
+    maxUses: 10,
+    usedCount: 8,
+    appIds: ["app_forgedesk"],
+    createdBy: "林晓",
+    lastUsedAt: "2026-09-18 11:05",
+  },
+  {
+    id: "ac_expire",
+    note: "展会访客（即将过期）",
+    codePrefix: "dock_ev3k",
+    plainCode: "dock_event_guest_xx",
+    status: "active",
+    expiresAt: "2026-09-22 23:59",
+    maxUses: null,
+    usedCount: 3,
+    appIds: ["app_forgedesk"],
+    createdBy: "赵宁",
+    lastUsedAt: "2026-09-20 09:40",
+  },
+];
+
 const PLATFORM_ORDER = ["Windows", "macOS", "Linux", "Android"];
-const ROLE_LABELS = { viewer: "查看者 Viewer", operator: "操作员 Operator", manager: "管理员 Manager", admin: "系统管理员" };
+const ROLE_LABELS = { admin: "系统管理员 Admin", user: "普通用户 User", viewer: "查看者 Viewer", operator: "操作员 Operator", manager: "应用管理员 Manager" };
 const VIS_LABELS = { public: "公开", password: "口令", login: "登录" };
+
+function genAccessCode() {
+  const hex = Math.random().toString(16).slice(2, 10);
+  return { plain: `dock_${hex}_${Date.now().toString(36).slice(-4)}`, prefix: `dock_${hex.slice(0, 4)}` };
+}
+
+function maskCodePrefix(prefix) {
+  return `${prefix}••••`;
+}
+
+function isCodeExpired(c) {
+  if (!c.expiresAt) return false;
+  return new Date(c.expiresAt.replace(/-/g, "/")) < new Date();
+}
+
+function isCodeUsable(c, appId) {
+  if (!c || c.status !== "active") return false;
+  if (isCodeExpired(c)) return false;
+  if (c.maxUses != null && c.usedCount >= c.maxUses) return false;
+  if (appId && !(c.appIds || []).includes(appId)) return false;
+  return true;
+}
 
 /* ========== Router ========== */
 function parseHash() {
@@ -465,6 +651,21 @@ function SyncBadge({ s }) {
   if (s === "syncing") return <Pill tone="warn">同步中</Pill>;
   if (s === "failed") return <Pill tone="danger">同步失败</Pill>;
   return <Pill tone="muted">仅手动</Pill>;
+}
+
+function syncModeText(app) {
+  const wh = !!app.syncWebhookEnabled;
+  const poll = !!app.syncPollEnabled;
+  if (wh && poll) return "Webhook+轮询";
+  if (wh) return "仅 Webhook";
+  if (poll) return "仅轮询";
+  return "手动";
+}
+
+function SyncModeLabel({ app }) {
+  const text = syncModeText(app);
+  const tone = text === "手动" ? "muted" : text === "Webhook+轮询" ? "accent" : "info";
+  return <Pill tone={tone}>{text}</Pill>;
 }
 
 function StatusJob({ s }) {
@@ -503,8 +704,83 @@ function groupAssets(assets) {
   return PLATFORM_ORDER.filter(p => g[p]?.length).map(p => ({ platform: p, assets: g[p] }));
 }
 
+const RELEASE_PROVIDERS = [
+  { id: "none", label: "无（纯手动上传）", implemented: true },
+  { id: "github", label: "GitHub Release", implemented: true },
+  { id: "gitee", label: "Gitee Release（二期）", implemented: false },
+  { id: "gitlab", label: "GitLab Release（二期）", implemented: false },
+];
+
+function providerMeta(id) {
+  return RELEASE_PROVIDERS.find(p => p.id === id) || RELEASE_PROVIDERS[0];
+}
+
+function providerLabel(id) {
+  const m = { none: "手动", github: "GitHub", gitee: "Gitee", gitlab: "GitLab" };
+  return m[id] || id || "手动";
+}
+
+function releaseRef(app) {
+  if (!app || !app.releaseProvider || app.releaseProvider === "none") return null;
+  const owner = app.releaseOwner || app.github?.owner;
+  const repo = app.releaseRepo || app.github?.repo;
+  if (!owner || !repo) return null;
+  return { provider: app.releaseProvider, owner, repo, baseUrl: app.releaseBaseUrl || "" };
+}
+
+function formatReleaseRef(app) {
+  const r = releaseRef(app);
+  if (!r) return "纯手动上传";
+  const base = r.baseUrl ? ` @ ${r.baseUrl.replace(/^https?:\/\//, "")}` : "";
+  return `${providerLabel(r.provider)} · ${r.owner}/${r.repo}${base}`;
+}
+
+function webhookPathFor(provider) {
+  if (provider === "github") return "/api/v1/hooks/github";
+  if (provider === "gitee") return "/api/v1/hooks/gitee";
+  if (provider === "gitlab") return "/api/v1/hooks/gitlab";
+  return null;
+}
+
+function canProviderAutoSync(app) {
+  const r = releaseRef(app);
+  if (!r) return false;
+  return !!providerMeta(r.provider).implemented && !!app.syncEnabled;
+}
+
+function detectPlatformFromUA() {
+  const ua = (navigator.userAgent || "").toLowerCase();
+  if (/android/.test(ua)) return "Android";
+  if (/iphone|ipad|ipod/.test(ua)) return "iOS";
+  if (/mac os x|macintosh/.test(ua)) return "macOS";
+  if (/linux/.test(ua)) return "Linux";
+  if (/windows|win64|win32/.test(ua)) return "Windows";
+  return "Windows";
+}
+
+function pickStableLatest(versions, showPrerelease) {
+  const list = versions || [];
+  if (showPrerelease) return list[0];
+  return list.find(v => !v.isPrerelease) || list[0];
+}
+
+function pickPrimaryAsset(assets, preferredPlatform) {
+  if (!assets?.length) return null;
+  return assets.find(a => a.platform === preferredPlatform) || assets[0];
+}
+
+async function copyText(text, toast, okMsg) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast?.(okMsg || "已复制");
+  } catch {
+    toast?.("复制失败，请手动选择");
+  }
+}
+
 /* ========== Public Shell ========== */
-function PublicShell({ children, route }) {
+function PublicShell({ children, route, publicUser, onPublicLogout, unlockedSlugs, onLockSlug }) {
+  const unlockedList = Object.keys(unlockedSlugs || {}).filter(k => unlockedSlugs[k]);
   return (
     <div className="pub-shell" data-od-id="public-shell">
       <header className="pub-top" data-od-id="public-topbar">
@@ -512,12 +788,24 @@ function PublicShell({ children, route }) {
           <Logo />
           <nav className="pub-nav">
             <Link to="/" className="btn btn-ghost btn-sm">应用目录</Link>
+            <Link to="/docs/update-check" className="btn btn-ghost btn-sm">更新 API</Link>
+            {publicUser ? (
+              <>
+                <span className="muted" style={{ fontSize: 12 }}>{publicUser.name || publicUser.email}</span>
+                <button type="button" className="btn btn-ghost btn-sm" data-od-id="pub-logout" onClick={onPublicLogout}>登出</button>
+              </>
+            ) : (
+              <Link to="/login" className="btn btn-ghost btn-sm">登录</Link>
+            )}
+            {unlockedList.length > 0 && (
+              <button type="button" className="btn btn-ghost btn-sm" data-od-id="pub-lock-codes" onClick={() => onLockSlug && onLockSlug(null)} title="清除本机会话中的口令解锁">退出全部口令</button>
+            )}
             <Link to="/admin" className="btn btn-sm">管理后台</Link>
           </nav>
         </div>
       </header>
       <main className="pub-main">{children}</main>
-      <footer className="pub-footer">AppDock · 自建应用构建与分发中心 · 示意数据</footer>
+      <footer className="pub-footer">AppDock · 自建应用分发中心 · 一期：Release 同步（非 CI）· 示意数据</footer>
     </div>
   );
 }
@@ -528,6 +816,7 @@ function AdminShell({ children, route, user, onLogout }) {
   const items = [
     { to: "/admin", label: "仪表盘", icon: I.home, match: p => p === "/admin" },
     { to: "/admin/apps", label: "应用", icon: I.apps, match: p => p.startsWith("/admin/apps") },
+    { to: "/admin/access-codes", label: "访问口令", icon: I.key, match: p => p.startsWith("/admin/access-codes") },
     { to: "/admin/jobs", label: "任务队列", icon: I.jobs, match: p => p.startsWith("/admin/jobs") },
     { to: "/admin/users", label: "用户", icon: I.users, match: p => p.startsWith("/admin/users"), admin: true },
     { to: "/admin/settings", label: "系统设置", icon: I.settings, match: p => p.startsWith("/admin/settings") },
@@ -549,7 +838,7 @@ function AdminShell({ children, route, user, onLogout }) {
       </aside>
       <div className="admin-body">
         <header className="admin-top" data-od-id="admin-topbar">
-          <div className="muted" style={{ fontSize: 13 }}>构建 · 同步 · 分发</div>
+          <div className="muted" style={{ fontSize: 13 }}>同步 · 分发</div>
           <div className="user-menu">
             <button type="button" className="user-btn" onClick={() => setMenu(v => !v)} data-od-id="user-menu-btn">
               <span className="avatar">{(user?.name || "U").slice(0, 1)}</span>
@@ -574,17 +863,21 @@ function AdminShell({ children, route, user, onLogout }) {
 function HomePage({ apps }) {
   const [q, setQ] = useState("");
   const [plat, setPlat] = useState("all");
-  const list = apps.filter(a => a.visibility === "public" || true).filter(a => {
+  const list = apps.filter(a => a.status !== "archived").filter(a => {
     const hit = !q || a.name.toLowerCase().includes(q.toLowerCase()) || a.slug.includes(q.toLowerCase());
     const pOk = plat === "all" || a.platforms.includes(plat);
     return hit && pOk;
   });
-  // Show all apps on home for demo discoverability, but badge visibility
   return (
     <div data-od-id="page-home">
       <div className="hero">
         <h1 data-od-id="home-title">应用下载中心</h1>
         <p>从 GitHub Release 同步安装包到自建存储，提供国内可达下载。支持公开、口令与登录可见性。</p>
+        <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link to="/docs/update-check" className="btn btn-sm">更新检查 API</Link>
+          <Link to="/a/not-found-demo" className="btn btn-sm btn-ghost">演示 404</Link>
+          <Link to="/a/archivedemo" className="btn btn-sm btn-ghost">演示归档</Link>
+        </div>
       </div>
       <div className="toolbar">
         <div className="search">
@@ -626,25 +919,33 @@ function HomePage({ apps }) {
   );
 }
 
-function PasswordGate({ app, onUnlock }) {
+function PasswordGate({ app, accessCodes, onUnlock }) {
   const [pwd, setPwd] = useState("");
   const [err, setErr] = useState("");
+  const bound = (accessCodes || []).filter(c => (c.appIds || []).includes(app.id));
+  const hasActive = bound.some(c => isCodeUsable(c, app.id));
   return (
     <div className="auth-wrap" data-od-id="page-password-gate">
       <div className="auth-card">
         <Logo word={false} />
-        <h1>需要口令</h1>
-        <p className="lead">「{app.name}」为口令可见。{app.passwordHint || "请输入分发口令继续。"}</p>
+        <h1>需要访问口令</h1>
+        <p className="lead">「{app.name}」为口令可见。请输入管理员签发的访问口令继续（仅解锁下载站）。</p>
+        {!hasActive && (
+          <div className="hint" style={{ marginBottom: 12, color: "var(--warn)" }}>当前应用尚未绑定可用口令，请联系管理员在「访问口令」中心签发。</div>
+        )}
         <div className="auth-stack">
           <div className="field">
             <label>访问口令</label>
-            <input className="input" type="password" value={pwd} onChange={e => setPwd(e.target.value)} placeholder="输入口令" autoFocus />
+            <input className="input mono" type="password" value={pwd} onChange={e => { setPwd(e.target.value); setErr(""); }} placeholder="例如 dock_demo_forge_2026" autoFocus data-od-id="gate-code-input" />
             {err && <span style={{ color: "var(--danger)", fontSize: 12 }}>{err}</span>}
+            <div className="hint">演示可用：dock_demo_forge_2026</div>
           </div>
-          <button type="button" className="btn btn-primary btn-block" onClick={() => {
-            if (pwd.trim().length < 1) { setErr("请输入口令"); return; }
-            // Demo: any non-empty unlocks
-            onUnlock(app.slug);
+          <button type="button" className="btn btn-primary btn-block" data-od-id="gate-submit" onClick={() => {
+            const raw = pwd.trim();
+            if (!raw) { setErr("请输入访问口令"); return; }
+            const hit = (accessCodes || []).find(c => c.plainCode === raw && isCodeUsable(c, app.id));
+            if (!hit) { setErr("口令无效或已失效"); return; }
+            onUnlock(app.slug, hit.id);
           }}>继续访问</button>
           <Link to="/" className="btn btn-ghost btn-block">返回首页</Link>
         </div>
@@ -653,47 +954,64 @@ function PasswordGate({ app, onUnlock }) {
   );
 }
 
-function PublicLogin({ onLogin, redirect }) {
-  const [email, setEmail] = useState("lin@moonlab.io");
-  const [password, setPassword] = useState("••••••••");
+ function PublicLogin({ onLogin, redirect, error }) {
+   const [login, setLogin] = useState("lin@moonlab.io");
+   const [password, setPassword] = useState("");
+   const [err, setErr] = useState(error || "");
+   return (
+     <div className="auth-wrap" data-od-id="page-public-login">
+       <div className="auth-card">
+         <Logo word={false} />
+         <h1>登录后下载</h1>
+         <p className="lead">此应用仅对已登录用户可见。可用用户名或邮箱登录，成功后返回应用详情。</p>
+         <div className="auth-stack">
+           <div className="field">
+             <label>用户名或邮箱</label>
+             <input className="input" autoComplete="username" value={login} onChange={e => { setLogin(e.target.value); setErr(""); }} placeholder="username 或 name@example.com" />
+           </div>
+           <div className="field">
+             <label>密码</label>
+             <input className="input" type="password" autoComplete="current-password" value={password} onChange={e => { setPassword(e.target.value); setErr(""); }} />
+           </div>
+           {err && <div className="hint" style={{ color: "var(--danger)" }}>{err}</div>}
+           <button type="button" className="btn btn-primary btn-block" onClick={() => {
+             if (!login.trim() || !password) { setErr("请输入用户名/邮箱与密码"); return; }
+             onLogin({ id: "u2", name: "林晓", email: login.includes("@") ? login : "lin@moonlab.io", username: login.includes("@") ? "linxiao" : login, role: "user", mustChangePassword: false }, redirect);
+           }}>登录</button>
+           <Link to="/" className="btn btn-ghost btn-block">返回首页</Link>
+         </div>
+       </div>
+     </div>
+   );
+ }
+
+
+function ForbiddenPage({ title = "无权访问", desc = "你没有权限查看此内容。请联系应用管理员授权。", code, icon = "lock" }) {
+  const ic = icon === "box" ? I.apps : icon === "alert" ? I.alert : I.lock;
   return (
-    <div className="auth-wrap" data-od-id="page-public-login">
-      <div className="auth-card">
-        <Logo word={false} />
-        <h1>登录后下载</h1>
-        <p className="lead">此应用仅对已登录用户可见。登录后将返回应用详情。</p>
-        <div className="auth-stack">
-          <div className="field"><label>邮箱</label><input className="input" value={email} onChange={e => setEmail(e.target.value)} /></div>
-          <div className="field"><label>密码</label><input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} /></div>
-          <button type="button" className="btn btn-primary btn-block" onClick={() => onLogin({ id: "u2", name: "林晓", email, role: "operator" }, redirect)}>登录</button>
-          <Link to="/" className="btn btn-ghost btn-block">返回首页</Link>
+    <div data-od-id="page-empty-state">
+      <div className="empty">
+        <Icon d={ic} size={32} />
+        {code && <div className="mono muted" style={{ marginTop: 8, fontSize: 12 }}>{code}</div>}
+        <h2>{title}</h2>
+        <p>{desc}</p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+          <Link to="/" className="btn">返回首页</Link>
+          <Link to="/docs/update-check" className="btn btn-ghost">更新 API 文档</Link>
         </div>
       </div>
     </div>
   );
 }
 
-function ForbiddenPage({ title = "无权访问", desc = "你没有权限查看此内容。请联系应用管理员授权。" }) {
-  return (
-    <div data-od-id="page-forbidden">
-      <div className="empty">
-        <Icon d={I.lock} size={32} />
-        <h2>{title}</h2>
-        <p>{desc}</p>
-        <Link to="/" className="btn">返回首页</Link>
-      </div>
-    </div>
-  );
-}
-
-function DownloadGroups({ assets, onDownload }) {
+function DownloadGroups({ assets, onDownload, toast, highlightPlatform }) {
   const groups = groupAssets(assets);
   return (
     <div className="dl-groups" data-od-id="download-groups">
       {groups.map(g => (
-        <div key={g.platform} className="dl-group">
+        <div key={g.platform} className="dl-group" style={highlightPlatform === g.platform ? { outline: "1px solid var(--accent)", borderRadius: 10 } : undefined}>
           <div className="dl-group-hd">
-            <strong>{g.platform}</strong>
+            <strong>{g.platform}{highlightPlatform === g.platform ? " · 推荐" : ""}</strong>
             <span className="muted mono" style={{ fontSize: 12 }}>{g.assets.length} 个文件</span>
           </div>
           {g.assets.map(a => (
@@ -702,7 +1020,10 @@ function DownloadGroups({ assets, onDownload }) {
                 <div className="dl-name">{a.name}</div>
                 <div className="dl-sub">{a.size} · sha256:{a.sha256.slice(0, 16)}…</div>
               </div>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => onDownload?.(a)}><Icon d={I.download} size={14} />下载</button>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button type="button" className="btn btn-sm" onClick={() => copyText(a.sha256, toast, "已复制 SHA256")}><Icon d={I.copy} size={14} />校验和</button>
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => onDownload?.(a)}><Icon d={I.download} size={14} />下载</button>
+              </div>
             </div>
           ))}
         </div>
@@ -713,7 +1034,24 @@ function DownloadGroups({ assets, onDownload }) {
 
 function AppDetailPage({ app, onDownload, toast }) {
   const [histOpen, setHistOpen] = useState(false);
-  const latest = app.versions[0];
+  const [showPre, setShowPre] = useState(() => {
+    try { return sessionStorage.getItem("ad:pre") === "1"; } catch { return false; }
+  });
+  const [moreOpen, setMoreOpen] = useState(true);
+  const preferred = detectPlatformFromUA();
+  const latest = pickStableLatest(app.versions, showPre);
+  const primary = pickPrimaryAsset(latest?.assets, preferred);
+  const hist = (app.versions || []).filter(v => v.tag !== latest?.tag).filter(v => showPre || !v.isPrerelease);
+
+  const setPre = (v) => {
+    setShowPre(v);
+    try { sessionStorage.setItem("ad:pre", v ? "1" : "0"); } catch {}
+  };
+
+  if (!latest) {
+    return <ForbiddenPage title="暂无版本" desc="该应用尚未发布任何安装包。" code="NO_RELEASE" icon="box" />;
+  }
+
   return (
     <div data-od-id={`page-app-${app.slug}`}>
       <div className="breadcrumb"><Link to="/">应用目录</Link><span>/</span><span>{app.name}</span></div>
@@ -723,34 +1061,67 @@ function AppDetailPage({ app, onDownload, toast }) {
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-.02em" }}>{app.name}</h1>
             <VisBadge v={app.visibility} />
-            <span className="mono muted">{app.latest}</span>
+            <span className="mono muted">{latest.tag}</span>
+            {latest.isPrerelease && <Pill tone="warn">预发布</Pill>}
           </div>
           <p className="muted" style={{ marginTop: 6, maxWidth: 640 }}>{app.summary}</p>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 13, color: "var(--muted)", cursor: "pointer" }}>
+            <input type="checkbox" checked={showPre} onChange={e => setPre(e.target.checked)} />
+            显示预发布版本
+          </label>
         </div>
       </div>
 
-      <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>最新版本下载 · {latest.tag}</h2>
-      <DownloadGroups assets={latest.assets} onDownload={a => { onDownload(a); toast(`已开始下载 ${a.name}`); }} />
+      {primary && (
+        <div className="card card-pad" style={{ marginBottom: 20 }} data-od-id="smart-download">
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 650, fontSize: 15 }}>推荐下载 · {preferred}</div>
+              <div className="mono" style={{ marginTop: 6, fontSize: 13 }}>{primary.name}</div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{primary.size} · 根据当前设备 UA 推荐，可切换其他平台</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" className="btn" onClick={() => copyText(primary.sha256, toast, "已复制 SHA256")}><Icon d={I.copy} size={14} />复制校验和</button>
+              <button type="button" className="btn btn-primary" onClick={() => { onDownload?.(primary); toast(`已开始下载 ${primary.name}`); }}><Icon d={I.download} size={14} />下载 {preferred} 版</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600 }}>全部平台 · {latest.tag}</h2>
+        <button type="button" className="btn btn-sm btn-ghost" onClick={() => setMoreOpen(v => !v)}>{moreOpen ? "收起" : "展开其他平台"}</button>
+      </div>
+      {moreOpen && (
+        <DownloadGroups
+          assets={latest.assets}
+          highlightPlatform={preferred}
+          toast={toast}
+          onDownload={a => { onDownload(a); toast(`已开始下载 ${a.name}`); }}
+        />
+      )}
 
       <h2 style={{ fontSize: 15, fontWeight: 600, margin: "28px 0 12px" }}>更新说明</h2>
       <div className="changelog"><pre>{latest.changelog}</pre></div>
 
       <div style={{ marginTop: 28 }}>
         <button type="button" className="collapse-hd" onClick={() => setHistOpen(v => !v)} data-od-id="history-toggle">
-          <span>历史版本（{app.versions.length - 1}）</span>
+          <span>历史版本（{hist.length}）</span>
           <span className="muted">{histOpen ? "收起" : "展开"}</span>
         </button>
         {histOpen && (
           <div className="ver-list">
-            {app.versions.slice(1).map(v => (
+            {hist.map(v => (
               <div key={v.tag} className="ver-row">
                 <div style={{ flex: 1 }}>
                   <Link to={`/a/${app.slug}/v/${v.tag}`} className="mono" style={{ fontWeight: 600 }}>{v.tag}</Link>
+                  {v.isPrerelease && <Pill tone="warn">预发布</Pill>}
                   <div className="muted" style={{ fontSize: 12 }}>{v.publishedAt} · {v.assets.length} 个资产</div>
                 </div>
                 <Link to={`/a/${app.slug}/v/${v.tag}`} className="btn btn-sm">查看</Link>
               </div>
             ))}
+            {!hist.length && <div className="muted" style={{ padding: 12, fontSize: 13 }}>没有更多历史版本（或已隐藏预发布）。</div>}
           </div>
         )}
       </div>
@@ -760,7 +1131,7 @@ function AppDetailPage({ app, onDownload, toast }) {
 
 function VersionPage({ app, tag, onDownload, toast }) {
   const ver = app.versions.find(v => v.tag === tag);
-  if (!ver) return <ForbiddenPage title="版本不存在" desc={`未找到 ${app.name} 的版本 ${tag}。`} />;
+  if (!ver) return <ForbiddenPage title="版本不存在" desc={`未找到 ${app.name} 的版本 ${tag}。`} code="404 VERSION" icon="box" />;
   return (
     <div data-od-id={`page-version-${tag}`}>
       <div className="breadcrumb">
@@ -770,7 +1141,7 @@ function VersionPage({ app, tag, onDownload, toast }) {
       </div>
       <div className="page-hd" style={{ marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 24 }}>{app.name} <span className="mono muted">{tag}</span></h1>
+          <h1 style={{ fontSize: 24 }}>{app.name} <span className="mono muted">{tag}</span>{ver.isPrerelease && <Pill tone="warn">预发布</Pill>}</h1>
           <div className="sub">发布于 {ver.publishedAt} · {ver.assets.length} 个安装包</div>
         </div>
       </div>
@@ -784,7 +1155,10 @@ function VersionPage({ app, tag, onDownload, toast }) {
                 <td>{a.platform}</td>
                 <td className="mono">{a.size}</td>
                 <td className="mono muted" style={{ fontSize: 11 }} title={a.sha256}>{a.sha256.slice(0, 20)}…</td>
-                <td><button type="button" className="btn btn-primary btn-sm" onClick={() => { onDownload(a); toast(`已开始下载 ${a.name}`); }}><Icon d={I.download} size={14} />下载</button></td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <button type="button" className="btn btn-sm" onClick={() => copyText(a.sha256, toast, "已复制 SHA256")}><Icon d={I.copy} size={14} /></button>{" "}
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => { onDownload(a); toast(`已开始下载 ${a.name}`); }}><Icon d={I.download} size={14} />下载</button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -795,30 +1169,130 @@ function VersionPage({ app, tag, onDownload, toast }) {
   );
 }
 
-/* ========== Admin Pages ========== */
-function AdminLogin({ onLogin }) {
-  const [email, setEmail] = useState("qi@moonlab.io");
-  const [password, setPassword] = useState("••••••••");
+function UpdateCheckDocsPage({ toast }) {
+  const sample = `GET /api/v1/public/apps/moonnotes/updates/check?currentVersion=2.4.0&platform=windows&arch=x64
+
+# 200 有更新
+{
+  "updateAvailable": true,
+  "tagName": "v2.4.1",
+  "asset": {
+    "id": "...",
+    "name": "MoonNotes-2.4.1-win-x64.exe",
+    "size": 71500000,
+    "sha256": "a3f1c8e9..."
+  }
+}
+
+# 200 已是最新
+{ "updateAvailable": false }`;
   return (
-    <div className="auth-wrap" data-od-id="page-admin-login">
-      <div className="auth-card">
-        <Logo />
-        <h1>管理后台登录</h1>
-        <p className="lead">仅内部成员可访问应用管理、同步任务与用户权限。</p>
-        <div className="auth-stack">
-          <div className="field"><label>邮箱</label><input className="input" value={email} onChange={e => setEmail(e.target.value)} /></div>
-          <div className="field"><label>密码</label><input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} /></div>
-          <button type="button" className="btn btn-primary btn-block" data-od-id="admin-login-submit" onClick={() => onLogin({ id: "u1", name: "陈启明", email, role: "admin" })}>登录</button>
-          <Link to="/" className="btn btn-ghost btn-block">返回下载站</Link>
-        </div>
+    <div data-od-id="page-update-check-docs">
+      <div className="breadcrumb"><Link to="/">应用目录</Link><span>/</span><span>更新检查 API</span></div>
+      <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>客户端更新检查</h1>
+      <p className="muted" style={{ maxWidth: 720, marginBottom: 20 }}>
+        一期提供极简 HTTP API，供桌面/移动客户端探测是否有新安装包。下载请走 AppDock 链接，勿直连 GitHub。
+      </p>
+      <div className="card card-pad" style={{ marginBottom: 16 }}>
+        <div className="panel-title">端点</div>
+        <p className="mono" style={{ fontSize: 13 }}>GET /api/v1/public/apps/:slug/updates/check</p>
+        <div className="hint" style={{ marginTop: 8 }}>Query：currentVersion、platform（windows/macos/linux/android）、arch（x64/arm64，可选）</div>
+        <div className="hint">鉴权：与下载页可见性一致（公开 / 访问口令 Cookie / 登录 JWT）。</div>
+      </div>
+      <div className="changelog"><pre>{sample}</pre></div>
+      <div style={{ marginTop: 16 }}>
+        <button type="button" className="btn" onClick={() => copyText(sample, toast, "已复制示例")}><Icon d={I.copy} size={14} />复制示例</button>
       </div>
     </div>
   );
 }
 
+/* ========== Admin Pages ========== */
+ function AdminLogin({ onLogin }) {
+   const [login, setLogin] = useState("admin");
+   const [password, setPassword] = useState("");
+   const [err, setErr] = useState("");
+   return (
+     <div className="auth-wrap" data-od-id="page-admin-login">
+       <div className="auth-card">
+         <Logo />
+         <h1>管理后台登录</h1>
+         <p className="lead">使用用户名或邮箱登录。种子 Admin 首次登录后须强制修改密码。</p>
+         <div className="auth-stack">
+           <div className="field">
+             <label>用户名或邮箱</label>
+             <input className="input" autoComplete="username" value={login} onChange={e => { setLogin(e.target.value); setErr(""); }} placeholder="admin 或 name@example.com" />
+             <div className="hint">示意：输入任意非空密码即可；演示强制改密请用密码 <span className="mono">changeme</span></div>
+           </div>
+           <div className="field">
+             <label>密码</label>
+             <input className="input" type="password" autoComplete="current-password" value={password} onChange={e => { setPassword(e.target.value); setErr(""); }} />
+           </div>
+           {err && <div className="hint" style={{ color: "var(--danger)" }}>{err}</div>}
+           <button type="button" className="btn btn-primary btn-block" data-od-id="admin-login-submit" onClick={() => {
+             if (!login.trim() || !password) { setErr("请输入用户名/邮箱与密码"); return; }
+             const must = password === "changeme";
+             onLogin({
+               id: "u1",
+               name: "陈启明",
+               username: login.includes("@") ? "admin" : login.trim(),
+               email: login.includes("@") ? login.trim() : "qi@moonlab.io",
+               role: "admin",
+               mustChangePassword: must,
+             });
+           }}>登录</button>
+           <Link to="/" className="btn btn-ghost btn-block">返回下载站</Link>
+         </div>
+       </div>
+     </div>
+   );
+ }
+
+ function ForceChangePassword({ user, onDone }) {
+   const [current, setCurrent] = useState("");
+   const [next, setNext] = useState("");
+   const [confirm, setConfirm] = useState("");
+   const [err, setErr] = useState("");
+   return (
+     <div className="auth-wrap" data-od-id="page-force-change-password">
+       <div className="auth-card">
+         <Logo />
+         <h1>修改初始密码</h1>
+         <p className="lead">账号 <span className="mono">{user?.username || user?.email}</span> 须先修改密码，方可进入管理后台。</p>
+         <div className="auth-stack">
+           <div className="field">
+             <label>当前密码</label>
+             <input className="input" type="password" autoComplete="current-password" value={current} onChange={e => { setCurrent(e.target.value); setErr(""); }} />
+           </div>
+           <div className="field">
+             <label>新密码</label>
+             <input className="input" type="password" autoComplete="new-password" value={next} onChange={e => { setNext(e.target.value); setErr(""); }} />
+             <div className="hint">一期规则：至少 8 位</div>
+           </div>
+           <div className="field">
+             <label>确认新密码</label>
+             <input className="input" type="password" autoComplete="new-password" value={confirm} onChange={e => { setConfirm(e.target.value); setErr(""); }} />
+           </div>
+           {err && <div className="hint" style={{ color: "var(--danger)" }}>{err}</div>}
+           <button type="button" className="btn btn-primary btn-block" data-od-id="change-password-submit" onClick={() => {
+             if (!current) { setErr("请输入当前密码"); return; }
+             if (next.length < 8) { setErr("新密码至少 8 位"); return; }
+             if (next !== confirm) { setErr("两次输入的新密码不一致"); return; }
+             if (current === next) { setErr("新密码不能与当前密码相同"); return; }
+             onDone({ ...user, mustChangePassword: false });
+           }}>确认修改</button>
+         </div>
+       </div>
+     </div>
+   );
+ }
+
+
 function Dashboard({ apps, jobs }) {
   const failed = jobs.filter(j => j.status === "failed");
   const recent = jobs.slice(0, 4);
+  const todayNotify = jobs.filter(j => j.queue === "notify" && j.createdAt.startsWith("2026-09-20"));
+  const notifyFail = todayNotify.filter(j => j.status === "failed").length;
   return (
     <div data-od-id="page-admin-dashboard">
       <div className="page-hd">
@@ -829,9 +1303,9 @@ function Dashboard({ apps, jobs }) {
       </div>
       <div className="stat-grid">
         <div className="stat-card" data-od-id="stat-apps"><div className="label">应用数</div><div className="value">{apps.length}</div><div className="delta">公开 {apps.filter(a => a.visibility === "public").length} · 受限 {apps.filter(a => a.visibility !== "public").length}</div></div>
-        <div className="stat-card"><div className="label">启用同步</div><div className="value">{apps.filter(a => a.syncEnabled).length}</div><div className="delta">最近同步 09:12</div></div>
+        <div className="stat-card"><div className="label">自动同步</div><div className="value">{apps.filter(a => a.syncWebhookEnabled || a.syncPollEnabled).length}</div><div className="delta">Webhook / 轮询 · 最近 09:12</div></div>
         <div className="stat-card"><div className="label">队列失败</div><div className="value" style={{ color: failed.length ? "var(--danger)" : undefined }}>{failed.length}</div><div className="delta">需关注 GitHub 限流</div></div>
-        <div className="stat-card"><div className="label">今日任务</div><div className="value">{jobs.filter(j => j.createdAt.startsWith("2026-09-20")).length}</div><div className="delta">含 webhook / poll</div></div>
+        <div className="stat-card" data-od-id="stat-mail"><div className="label">今日邮件</div><div className="value">{todayNotify.length}</div><div className="delta">{notifyFail ? `${notifyFail} 封失败` : "notify 队列 · 含下载链接"}</div></div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16 }}>
         <div className="card card-pad">
@@ -878,7 +1352,7 @@ function AppsList({ apps }) {
   return (
     <div data-od-id="page-admin-apps">
       <div className="page-hd">
-        <div><h1>应用</h1><div className="sub">管理可见性、GitHub 同步与成员授权</div></div>
+        <div><h1>应用</h1><div className="sub">管理可见性、Release 同步源与成员授权</div></div>
         <Link to="/admin/apps/new" className="btn btn-primary"><Icon d={I.plus} size={15} />新建应用</Link>
       </div>
       <div className="table-wrap">
@@ -894,13 +1368,18 @@ function AppsList({ apps }) {
                     <div className="app-icon" style={{ background: a.color, width: 32, height: 32, fontSize: 11, borderRadius: 8 }}>{a.initials}</div>
                     <div>
                       <div style={{ fontWeight: 600 }}>{a.name}</div>
-                      <div className="muted" style={{ fontSize: 12 }}>{a.github ? `${a.github.owner}/${a.github.repo}` : "纯手动上传"}</div>
+                      <div className="muted" style={{ fontSize: 12 }}>{formatReleaseRef(a)}</div>
                     </div>
                   </div>
                 </td>
                 <td className="mono">{a.slug}</td>
                 <td><VisBadge v={a.visibility} /></td>
-                <td><SyncBadge s={a.syncStatus} /></td>
+                <td>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                    <SyncBadge s={a.syncStatus} />
+                    <SyncModeLabel app={a} />
+                  </div>
+                </td>
                 <td className="mono">{a.latest}</td>
                 <td className="mono muted" style={{ fontSize: 12 }}>{a.lastSyncAt}</td>
                 <td><Link to={`/admin/apps/${a.id}`} className="btn btn-sm">管理</Link></td>
@@ -913,35 +1392,115 @@ function AppsList({ apps }) {
   );
 }
 
-function AppForm({ initial, onSave, title }) {
+function AppForm({ initial, onSave, title, slugLocked }) {
   const [form, setForm] = useState(initial || {
-    name: "", slug: "", githubOwner: "", githubRepo: "", visibility: "public",
-    syncEnabled: true, includeGlob: "*.{exe,dmg,AppImage,apk}", summary: "",
+    name: "", slug: "", releaseProvider: "none", releaseOwner: "", releaseRepo: "", releaseBaseUrl: "",
+    visibility: "public",
+    syncEnabled: false, syncWebhookEnabled: false, syncPollEnabled: false,
+    syncPollIntervalMin: "", includeGlob: "*.{exe,dmg,AppImage,apk}", summary: "",
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const meta = providerMeta(form.releaseProvider);
+  const hasRepo = form.releaseProvider !== "none" && !!form.releaseOwner && !!form.releaseRepo;
+  const syncAllowed = meta.implemented && hasRepo;
+  const setProvider = (id) => setForm(f => {
+    const m = providerMeta(id);
+    const next = { ...f, releaseProvider: id };
+    if (id === "none") {
+      next.releaseOwner = "";
+      next.releaseRepo = "";
+      next.releaseBaseUrl = "";
+      next.syncEnabled = false;
+      next.syncWebhookEnabled = false;
+      next.syncPollEnabled = false;
+    } else if (!m.implemented) {
+      next.syncEnabled = false;
+      next.syncWebhookEnabled = false;
+      next.syncPollEnabled = false;
+    } else if (!f.syncEnabled && (f.releaseOwner || f.releaseRepo)) {
+      next.syncEnabled = true;
+      next.syncWebhookEnabled = true;
+      next.syncPollEnabled = true;
+    }
+    return next;
+  });
+  const setSyncMaster = (on) => {
+    if (!syncAllowed && on) return;
+    setForm(f => ({
+      ...f,
+      syncEnabled: on,
+      syncWebhookEnabled: on ? f.syncWebhookEnabled : false,
+      syncPollEnabled: on ? f.syncPollEnabled : false,
+    }));
+  };
+  const ownerPh = form.releaseProvider === "gitlab" ? "group 或用户名" : "用户 / 组织";
   return (
     <div data-od-id="page-app-form">
-      <div className="page-hd"><div><h1>{title}</h1><div className="sub">GitHub 仓库可留空，表示纯手动上传应用</div></div></div>
+      <div className="page-hd"><div><h1>{title}</h1><div className="sub">选择 Release 同步源；一期仅 GitHub 可自动同步，Gitee/GitLab 为二期占位</div></div></div>
       <div className="card card-pad" style={{ maxWidth: 720 }}>
         <div className="form-grid">
           <div className="field"><label>应用名称</label><input className="input" value={form.name} onChange={e => set("name", e.target.value)} placeholder="MoonNotes" /></div>
-          <div className="field"><label>Slug</label><input className="input mono" value={form.slug} onChange={e => set("slug", e.target.value)} placeholder="moonnotes" /></div>
+          <div className="field"><label>Slug</label>
+            <input className="input mono" value={form.slug} disabled={!!slugLocked} onChange={e => set("slug", e.target.value)} placeholder="moonnotes" />
+            {slugLocked && <div className="hint">创建后不可改 slug</div>}
+          </div>
           <div className="field span-2"><label>简介</label><textarea className="textarea" value={form.summary} onChange={e => set("summary", e.target.value)} /></div>
-          <div className="field"><label>GitHub Owner</label><input className="input mono" value={form.githubOwner} onChange={e => set("githubOwner", e.target.value)} placeholder="可空" /></div>
-          <div className="field"><label>GitHub Repo</label><input className="input mono" value={form.githubRepo} onChange={e => set("githubRepo", e.target.value)} placeholder="可空" /></div>
+          <div className="field span-2"><label>同步源（Release Provider）</label>
+            <select className="select" value={form.releaseProvider} onChange={e => setProvider(e.target.value)} data-od-id="form-release-provider">
+              {RELEASE_PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+            </select>
+            {!meta.implemented && (
+              <div className="hint" style={{ marginTop: 6, color: "var(--warn)" }}>该 Provider 一期未实现：可先保存配置，但不可开启 Webhook / 轮询；手动同步将返回 501。</div>
+            )}
+          </div>
+          {form.releaseProvider !== "none" && (
+            <>
+              <div className="field"><label>Owner / Namespace</label><input className="input mono" value={form.releaseOwner} onChange={e => set("releaseOwner", e.target.value)} placeholder={ownerPh} /></div>
+              <div className="field"><label>Repo</label><input className="input mono" value={form.releaseRepo} onChange={e => set("releaseRepo", e.target.value)} placeholder="仓库名" /></div>
+              {form.releaseProvider === "gitlab" && (
+                <div className="field span-2"><label>实例 Base URL（自建 GitLab）</label>
+                  <input className="input mono" value={form.releaseBaseUrl} onChange={e => set("releaseBaseUrl", e.target.value)} placeholder="https://gitlab.example.com · 官方可留空" />
+                </div>
+              )}
+            </>
+          )}
           <div className="field"><label>可见性</label>
             <select className="select" value={form.visibility} onChange={e => set("visibility", e.target.value)}>
               <option value="public">公开 Public</option>
               <option value="password">口令 Password</option>
               <option value="login">登录 Login</option>
             </select>
+            {form.visibility === "password" && (
+              <div className="hint" style={{ marginTop: 6 }}>口令不在此表单设置。设为「口令」后须前往 <Link to="/admin/access-codes">访问口令中心</Link> 签发并绑定，否则对外无法解锁。</div>
+            )}
+            {form.visibility === "login" && (
+              <div className="hint" style={{ marginTop: 6, color: "var(--warn)" }}>login = 任意已登录账号可下，≠ 仅应用成员（成员门禁二期）。</div>
+            )}
           </div>
           <div className="field"><label>Include Glob</label><input className="input mono" value={form.includeGlob} onChange={e => set("includeGlob", e.target.value)} /></div>
-          <div className="span-2">
-            <div className="switch-row">
-              <div><div style={{ fontWeight: 500 }}>启用 GitHub Release 同步</div><div className="hint">关闭后仅支持手动上传</div></div>
-              <label className="switch"><input type="checkbox" checked={form.syncEnabled} onChange={e => set("syncEnabled", e.target.checked)} /><span /></label>
+          <div className="span-2" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="switch-row" data-od-id="form-sync-master" style={{ opacity: syncAllowed ? 1 : 0.45 }}>
+              <div>
+                <div style={{ fontWeight: 500 }}>启用自动同步</div>
+                <div className="hint">{syncAllowed ? "总开关：关闭后仅手动上传" : (form.releaseProvider === "none" ? "请先选择已实现的同步源并填写仓库" : "当前源未实现或未填仓库")}</div>
+              </div>
+              <label className="switch"><input type="checkbox" checked={!!form.syncEnabled && syncAllowed} disabled={!syncAllowed} onChange={e => setSyncMaster(e.target.checked)} /><span /></label>
             </div>
+            <div className="switch-row" style={{ opacity: form.syncEnabled && syncAllowed ? 1 : 0.45, pointerEvents: form.syncEnabled && syncAllowed ? "auto" : "none" }} data-od-id="form-sync-webhook">
+              <div><div style={{ fontWeight: 500 }}>接受 Webhook</div><div className="hint">近实时推送 · syncWebhookEnabled</div></div>
+              <label className="switch"><input type="checkbox" checked={!!form.syncWebhookEnabled} onChange={e => set("syncWebhookEnabled", e.target.checked)} /><span /></label>
+            </div>
+            <div className="switch-row" style={{ opacity: form.syncEnabled && syncAllowed ? 1 : 0.45, pointerEvents: form.syncEnabled && syncAllowed ? "auto" : "none" }} data-od-id="form-sync-poll">
+              <div><div style={{ fontWeight: 500 }}>参与定时轮询</div><div className="hint">无公网/收不到 Hook 时的兜底 · syncPollEnabled</div></div>
+              <label className="switch"><input type="checkbox" checked={!!form.syncPollEnabled} onChange={e => set("syncPollEnabled", e.target.checked)} /><span /></label>
+            </div>
+            {form.syncEnabled && syncAllowed && form.syncPollEnabled && (
+              <div className="field" data-od-id="form-poll-interval">
+                <label>轮询间隔覆盖（分钟）</label>
+                <input className="input mono" style={{ maxWidth: 160 }} value={form.syncPollIntervalMin} onChange={e => set("syncPollIntervalMin", e.target.value.replace(/[^\d]/g, ""))} placeholder="留空=系统默认" />
+                <div className="hint">留空则使用系统设置中的默认间隔</div>
+              </div>
+            )}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
@@ -953,17 +1512,68 @@ function AppForm({ initial, onSave, title }) {
   );
 }
 
-function AppAdminDetail({ app, onSync, onToast, users }) {
+function AppAdminDetail({ app, onSync, onToast, users, onPatchApp, settings, accessCodes }) {
   const [tab, setTab] = useState("overview");
   const [uploadMode, setUploadMode] = useState("new"); // new | append
   const [files, setFiles] = useState([]);
   const [drag, setDrag] = useState(false);
   const [overwrite, setOverwrite] = useState(null);
   const [tag, setTag] = useState("");
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadChangelog, setUploadChangelog] = useState("");
+  const [uploadPrerelease, setUploadPrerelease] = useState(false);
   const [members, setMembers] = useState(app.members);
   const [addUser, setAddUser] = useState("");
   const [addRole, setAddRole] = useState("viewer");
+  const [webhookOn, setWebhookOn] = useState(!!app.syncWebhookEnabled);
+  const [pollOn, setPollOn] = useState(!!app.syncPollEnabled);
+  const [pollInterval, setPollInterval] = useState(app.syncPollIntervalMin === "" || app.syncPollIntervalMin == null ? "" : String(app.syncPollIntervalMin));
+  const [notifyForm, setNotifyForm] = useState({
+    notifyEnabled: !!app.notifyEnabled,
+    notifyOnSyncSuccess: !!app.notifyOnSyncSuccess,
+    notifyOnSyncFailure: !!app.notifyOnSyncFailure,
+    notifyOnManualUpload: !!app.notifyOnManualUpload,
+    notifyEmails: app.notifyEmails || "",
+    notifyMembers: !!app.notifyMembers,
+    notifyMemberRoles: [...(app.notifyMemberRoles || [])],
+    notifyUseGlobalFallback: app.notifyUseGlobalFallback !== false,
+  });
   const fileRef = useRef(null);
+  const canAutoSync = canProviderAutoSync(app);
+  const providerImpl = providerMeta(app.releaseProvider || "none").implemented;
+  const manualOnly = (!webhookOn && !pollOn) || !canAutoSync;
+  const hookPath = webhookPathFor(app.releaseProvider);
+  const boundCodes = (accessCodes || []).filter(c => (c.appIds || []).includes(app.id));
+  const ROLE_OPTS = [
+    { id: "manager", label: "manager" },
+    { id: "operator", label: "operator" },
+    { id: "viewer", label: "viewer" },
+  ];
+
+  const persistSync = (nextWh, nextPoll, nextInterval) => {
+    if (onPatchApp) {
+      onPatchApp(app.id, {
+        syncWebhookEnabled: nextWh,
+        syncPollEnabled: nextPoll,
+        syncPollIntervalMin: nextInterval === "" ? "" : Number(nextInterval),
+        syncStatus: (nextWh || nextPoll) && canAutoSync ? (app.syncStatus === "manual" ? "ok" : app.syncStatus) : "manual",
+      });
+    }
+  };
+
+  const saveNotify = () => {
+    if (onPatchApp) onPatchApp(app.id, { ...notifyForm });
+    onToast("通知设置已保存");
+  };
+
+  const toggleNotifyRole = (role) => {
+    setNotifyForm(f => ({
+      ...f,
+      notifyMemberRoles: f.notifyMemberRoles.includes(role)
+        ? f.notifyMemberRoles.filter(r => r !== role)
+        : [...f.notifyMemberRoles, role],
+    }));
+  };
 
   const addFiles = (list) => {
     const arr = Array.from(list || []);
@@ -999,51 +1609,128 @@ function AppAdminDetail({ app, onSync, onToast, users }) {
           <div className="app-icon" style={{ background: app.color }}>{app.initials}</div>
           <div>
             <h1>{app.name}</h1>
-            <div className="sub mono">{app.slug} · {app.github ? `${app.github.owner}/${app.github.repo}` : "手动上传"}</div>
+            <div className="sub mono">{app.slug} · {formatReleaseRef(app)}</div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link to={`/admin/apps/${app.id}/edit`} className="btn btn-sm">编辑</Link>
-          <button type="button" className="btn btn-sm" onClick={() => { onSync(app.id); onToast("已触发手动同步"); }} disabled={!app.syncEnabled}><Icon d={I.sync} size={14} />手动同步</button>
+          <button type="button" className="btn btn-sm" onClick={() => {
+            if (!releaseRef(app)) { onToast("未绑定同步源，请手动上传"); return; }
+            if (!providerImpl) { onToast("PROVIDER_NOT_IMPLEMENTED · 二期"); return; }
+            onSync(app.id); onToast("已触发手动同步");
+          }} disabled={!releaseRef(app)}><Icon d={I.sync} size={14} />手动同步</button>
+          <button type="button" className="btn btn-sm" data-od-id="btn-archive" onClick={() => {
+            const next = app.status === "archived" ? "active" : "archived";
+            onPatchApp && onPatchApp(app.id, { status: next, syncEnabled: next === "archived" ? false : app.syncEnabled });
+            onToast(next === "archived" ? "已归档（对外 404/410）" : "已取消归档");
+          }}>{app.status === "archived" ? "取消归档" : "归档"}</button>
           <Link to={`/a/${app.slug}`} className="btn btn-sm">预览下载页</Link>
         </div>
       </div>
+      {app.status === "archived" && (
+        <div className="hint" style={{ marginBottom: 12, color: "var(--warn)" }}>此应用已归档：同步已停；对外下载站返回归档空状态。</div>
+      )}
       <div className="tabs" data-od-id="app-detail-tabs">
-        {[["overview", "概览"], ["versions", "版本"], ["upload", "手动上传"], ["members", "成员授权"], ["webhook", "Webhook"]].map(([k, l]) => (
+        {[["overview", "概览"], ["versions", "版本"], ["upload", "手动上传"], ["members", "成员授权"], ["sync", "同步"], ["notify", "通知"]].map(([k, l]) => (
           <button key={k} type="button" className={`tab ${tab === k ? "active" : ""}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
 
       {tab === "overview" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div className="card card-pad">
-            <div className="panel-title">状态</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">可见性</span><VisBadge v={app.visibility} /></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">同步</span><SyncBadge s={app.syncStatus} /></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">最新版本</span><span className="mono">{app.latest}</span></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">最近同步</span><span className="mono">{app.lastSyncAt}</span></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">Include</span><span className="mono" style={{ fontSize: 12 }}>{app.includeGlob || "—"}</span></div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="card card-pad" data-od-id="sync-sources-card">
+            <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>同步方式</span>
+              <SyncModeLabel app={{ ...app, syncWebhookEnabled: webhookOn, syncPollEnabled: pollOn }} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div style={{ padding: 12, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface-2)" }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Webhook</div>
+                <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>近实时 · {providerLabel(app.releaseProvider)} Release 推送</div>
+                <div style={{ marginTop: 8 }}>{webhookOn && canAutoSync ? <Pill tone="success">已启用</Pill> : <Pill tone="muted">未启用</Pill>}</div>
+              </div>
+              <div style={{ padding: 12, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface-2)" }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>定时轮询</div>
+                <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>兜底 · 尤其无公网时</div>
+                <div style={{ marginTop: 8 }}>{pollOn && canAutoSync ? <Pill tone="success">已启用</Pill> : <Pill tone="muted">未启用</Pill>}</div>
+              </div>
+              <div style={{ padding: 12, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface-2)" }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>手动同步</div>
+                <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>随时可点顶部「手动同步」</div>
+                <div style={{ marginTop: 8 }}><Pill tone="accent">始终可用</Pill></div>
+              </div>
+            </div>
+            {manualOnly && (
+              <div className="hint" style={{ marginTop: 12 }}>当前未启用 Webhook / 轮询{!releaseRef(app) ? "，且未绑定同步源" : (!providerImpl ? "（当前 Provider 二期未实现）" : "")}，版本更新依赖手动上传或手动同步。</div>
+            )}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div className="card card-pad">
+              <div className="panel-title">状态</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">状态</span>{app.status === "archived" ? <Pill tone="warn">已归档</Pill> : <Pill tone="success">活跃</Pill>}</div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">可见性</span><VisBadge v={app.visibility} /></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">同步源</span><span className="mono" style={{ fontSize: 12 }}>{formatReleaseRef(app)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">同步状态</span><SyncBadge s={app.syncStatus} /></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">同步模式</span><SyncModeLabel app={{ ...app, syncWebhookEnabled: webhookOn, syncPollEnabled: pollOn }} /></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">最新版本</span><span className="mono">{app.latest}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">最近同步</span><span className="mono">{app.lastSyncAt}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">Include</span><span className="mono" style={{ fontSize: 12 }}>{app.includeGlob || "—"}</span></div>
+              </div>
+            </div>
+            <div className="card card-pad">
+              <div className="panel-title">简介</div>
+              <p style={{ fontSize: 14, color: "var(--muted)" }}>{app.summary}</p>
             </div>
           </div>
-          <div className="card card-pad">
-            <div className="panel-title">简介</div>
-            <p style={{ fontSize: 14, color: "var(--muted)" }}>{app.summary}</p>
-          </div>
+          {app.visibility === "password" && (
+            <div className="card card-pad" data-od-id="bound-access-codes">
+              <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>绑定的访问口令</span>
+                <Link to="/admin/access-codes" className="btn btn-sm">去口令中心</Link>
+              </div>
+              {boundCodes.length === 0 ? (
+                <div className="hint">尚未绑定任何访问口令。设为「口令」可见后须在口令中心签发并绑定，否则对外无法解锁。</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {boundCodes.map(c => (
+                    <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface-2)" }}>
+                      <span className="mono">{maskCodePrefix(c.codePrefix)}</span>
+                      {c.status === "active" && !isCodeExpired(c) ? <Pill tone="success">启用</Pill> : <Pill tone="muted">{c.status === "disabled" ? "停用" : "失效"}</Pill>}
+                      <span className="muted" style={{ flex: 1 }}>{c.note}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       {tab === "versions" && (
         <div className="table-wrap">
           <table className="data">
-            <thead><tr><th>Tag</th><th>发布日期</th><th>资产数</th><th></th></tr></thead>
+            <thead><tr><th>Tag</th><th>标记</th><th>发布日期</th><th>资产数</th><th></th></tr></thead>
             <tbody>
               {app.versions.map(v => (
-                <tr key={v.tag}>
+                <tr key={v.tag} style={{ opacity: v.status === "yanked" ? 0.55 : 1 }}>
                   <td className="mono">{v.tag}</td>
+                  <td style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {v.isPrerelease && <Pill tone="warn">预发布</Pill>}
+                    {v.status === "yanked" && <Pill tone="danger">已 Yank</Pill>}
+                    {v.source === "manual" && <Pill tone="muted">手动</Pill>}
+                  </td>
                   <td>{v.publishedAt}</td>
-                  <td>{v.assets.length}</td>
-                  <td><Link to={`/a/${app.slug}/v/${v.tag}`} className="btn btn-sm">查看</Link></td>
+                  <td>{(v.assets || []).length}</td>
+                  <td style={{ display: "flex", gap: 6 }}>
+                    <Link to={`/a/${app.slug}/v/${v.tag}`} className="btn btn-sm">查看</Link>
+                    <button type="button" className="btn btn-sm" disabled={v.status === "yanked"} onClick={() => {
+                      onPatchApp && onPatchApp(app.id, {
+                        versions: app.versions.map(x => x.tag === v.tag ? { ...x, status: "yanked" } : x),
+                      });
+                      onToast(`已 yank ${v.tag}`);
+                    }}>Yank</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1058,15 +1745,20 @@ function AppAdminDetail({ app, onSync, onToast, users }) {
             <button type="button" className={`chip ${uploadMode === "append" ? "active" : ""}`} onClick={() => setUploadMode("append")}>向已有版本补传</button>
           </div>
           {uploadMode === "new" ? (
-            <div className="field" style={{ maxWidth: 320, marginBottom: 14 }}>
-              <label>版本 Tag</label>
-              <input className="input mono" placeholder="v1.0.0" value={tag} onChange={e => setTag(e.target.value)} />
+            <div className="form-grid" style={{ marginBottom: 14, maxWidth: 720 }}>
+              <div className="field"><label>版本 Tag</label><input className="input mono" placeholder="v1.0.0" value={tag} onChange={e => setTag(e.target.value)} /></div>
+              <div className="field"><label>标题</label><input className="input" placeholder="可选，默认=Tag" value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} /></div>
+              <div className="field span-2"><label>Changelog</label><textarea className="textarea" rows={3} placeholder="Markdown 发布说明" value={uploadChangelog} onChange={e => setUploadChangelog(e.target.value)} /></div>
+              <div className="span-2 switch-row">
+                <div><div style={{ fontWeight: 500 }}>标记为预发布</div><div className="hint">isPrerelease · 下载站默认隐藏</div></div>
+                <label className="switch"><input type="checkbox" checked={uploadPrerelease} onChange={e => setUploadPrerelease(e.target.checked)} /><span /></label>
+              </div>
             </div>
           ) : (
             <div className="field" style={{ maxWidth: 320, marginBottom: 14 }}>
               <label>目标版本</label>
               <select className="select" value={tag || app.versions[0]?.tag} onChange={e => setTag(e.target.value)}>
-                {app.versions.map(v => <option key={v.tag} value={v.tag}>{v.tag}</option>)}
+                {app.versions.map(v => <option key={v.tag} value={v.tag}>{v.tag}{v.status === "yanked" ? " (yanked)" : ""}</option>)}
               </select>
             </div>
           )}
@@ -1080,20 +1772,34 @@ function AppAdminDetail({ app, onSync, onToast, users }) {
           >
             <Icon d={I.upload} size={28} />
             <div className="dz-title" style={{ marginTop: 10 }}>拖拽安装包到此处，或点击选择</div>
-            <div className="muted" style={{ fontSize: 13 }}>支持多文件 · 同名将二次确认覆盖</div>
+            <div className="muted" style={{ fontSize: 13 }}>支持多文件 · 可指定 platform/arch · 同名将二次确认覆盖</div>
             <input ref={fileRef} type="file" multiple hidden onChange={e => addFiles(e.target.files)} />
           </div>
           {files.length > 0 && (
             <div className="file-list" data-od-id="upload-file-list">
               {files.map(f => (
-                <div key={f.name} className="file-row">
+                <div key={f.name} className="file-row" style={{ flexWrap: "wrap" }}>
                   <Icon d={I.apps} size={16} />
                   <span className="name" title={f.name}>{f.name}</span>
                   <span className="mono muted" style={{ fontSize: 12 }}>{f.size}</span>
+                  <select className="select" style={{ width: 120 }} value={f.platform || "auto"} onChange={e => setFiles(fs => fs.map(x => x.name === f.name ? { ...x, platform: e.target.value } : x))}>
+                    <option value="auto">平台·推断</option>
+                    {PLATFORM_ORDER.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  <select className="select" style={{ width: 110 }} value={f.arch || "auto"} onChange={e => setFiles(fs => fs.map(x => x.name === f.name ? { ...x, arch: e.target.value } : x))}>
+                    <option value="auto">架构·推断</option>
+                    <option value="x64">x64</option>
+                    <option value="arm64">arm64</option>
+                    <option value="universal">universal</option>
+                  </select>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFiles(fs => fs.filter(x => x.name !== f.name))}><Icon d={I.x} size={14} /></button>
                 </div>
               ))}
-              <button type="button" className="btn btn-primary" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={() => { onToast(`已提交上传 ${files.length} 个文件${tag ? " → " + tag : ""}`); setFiles([]); }}>提交上传</button>
+              <button type="button" className="btn btn-primary" style={{ alignSelf: "flex-start", marginTop: 8 }} onClick={() => {
+                if (uploadMode === "new" && !tag) { onToast("请填写版本 Tag"); return; }
+                onToast(`已提交上传 ${files.length} 个文件 → ${tag || "补传"}${uploadPrerelease ? " · 预发布" : ""}`);
+                setFiles([]); setUploadTitle(""); setUploadChangelog(""); setUploadPrerelease(false);
+              }}>提交上传</button>
             </div>
           )}
           <Modal
@@ -1155,19 +1861,357 @@ function AppAdminDetail({ app, onSync, onToast, users }) {
         </div>
       )}
 
-      {tab === "webhook" && (
-        <div className="card card-pad" data-od-id="webhook-panel">
-          <div className="panel-title">GitHub Webhook 配置说明</div>
-          <ol style={{ paddingLeft: 18, color: "var(--muted)", fontSize: 14, lineHeight: 1.7, marginBottom: 14 }}>
-            <li>在 GitHub 仓库 Settings → Webhooks 新建 Hook</li>
-            <li>Payload URL 填入下方地址，Content type 选 <span className="mono">application/json</span></li>
-            <li>事件勾选 <strong style={{ color: "var(--fg)" }}>Releases</strong></li>
-            <li>Secret 与系统设置中的 Webhook Secret 保持一致</li>
-          </ol>
-          <div className="webhook-box">https://dl.example.com/api/hooks/github/{app.id}</div>
-          <button type="button" className="btn btn-sm" style={{ marginTop: 12 }} onClick={() => onToast("已复制 Webhook URL")}><Icon d={I.copy} size={14} />复制 URL</button>
+      {tab === "sync" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }} data-od-id="sync-panel">
+          {!canAutoSync && (
+            <div className="card card-pad" style={{ borderColor: "oklch(78% 0.12 85 / 0.4)" }}>
+              <div style={{ fontSize: 13, color: "var(--warn)" }}>
+                {!releaseRef(app)
+                  ? "未绑定同步源 — 仅手动上传。"
+                  : !providerImpl
+                    ? `${providerLabel(app.releaseProvider)} 一期未实现（PROVIDER_NOT_IMPLEMENTED）— 可保存配置，不可自动同步。`
+                    : "应用级自动同步总开关已关闭 — 仅手动上传。"}
+                {" "}可在「编辑」中修改同步源。
+              </div>
+            </div>
+          )}
+          <div className="card card-pad" data-od-id="sync-webhook-section">
+            <div className="panel-title">Webhook（近实时）</div>
+            <div className="switch-row" style={{ marginBottom: 14, opacity: canAutoSync ? 1 : 0.45, pointerEvents: canAutoSync ? "auto" : "none" }}>
+              <div><div style={{ fontWeight: 500 }}>接受 Webhook</div><div className="hint">{providerLabel(app.releaseProvider)} Release 事件推送到本站 · syncWebhookEnabled</div></div>
+              <label className="switch"><input type="checkbox" checked={webhookOn} disabled={!canAutoSync} onChange={e => { const v = e.target.checked; setWebhookOn(v); persistSync(v, pollOn, pollInterval); onToast(v ? "已开启 Webhook" : "已关闭 Webhook"); }} /><span /></label>
+            </div>
+            <ol style={{ paddingLeft: 18, color: "var(--muted)", fontSize: 14, lineHeight: 1.7, marginBottom: 14 }}>
+              <li>在 {providerLabel(app.releaseProvider)} 仓库 Settings → Webhooks 新建 Hook</li>
+              <li>Payload URL 填入下方地址，Content type 选 <span className="mono">application/json</span></li>
+              <li>事件勾选 <strong style={{ color: "var(--fg)" }}>Releases</strong>（各平台名称可能不同）</li>
+              <li>Secret 与系统设置中的 Webhook Secret 保持一致</li>
+            </ol>
+            <div className="webhook-box">https://dl.example.com{hookPath || "/api/v1/hooks/…"}</div>
+            <button type="button" className="btn btn-sm" style={{ marginTop: 12 }} onClick={() => onToast(hookPath ? "已复制 Webhook URL" : "当前 Provider 无 Hook 路径")} disabled={!hookPath}><Icon d={I.copy} size={14} />复制 URL</button>
+          </div>
+          <div className="card card-pad" data-od-id="sync-poll-section">
+            <div className="panel-title">定时轮询（兜底）</div>
+            <div className="switch-row" style={{ marginBottom: 14, opacity: canAutoSync ? 1 : 0.45, pointerEvents: canAutoSync ? "auto" : "none" }}>
+              <div><div style={{ fontWeight: 500 }}>参与定时轮询</div><div className="hint">无公网 / 收不到 Webhook 时依赖轮询 · syncPollEnabled</div></div>
+              <label className="switch"><input type="checkbox" checked={pollOn} disabled={!canAutoSync} onChange={e => { const v = e.target.checked; setPollOn(v); persistSync(webhookOn, v, pollInterval); onToast(v ? "已开启轮询" : "已关闭轮询"); }} /><span /></label>
+            </div>
+            <div className="field" style={{ maxWidth: 280, opacity: canAutoSync && pollOn ? 1 : 0.45 }}>
+              <label>轮询间隔覆盖（分钟）</label>
+              <input
+                className="input mono"
+                value={pollInterval}
+                disabled={!canAutoSync || !pollOn}
+                placeholder={`留空 = 系统默认 ${settings?.pollIntervalMin ?? 15}`}
+                onChange={e => setPollInterval(e.target.value.replace(/[^\d]/g, ""))}
+                onBlur={() => { persistSync(webhookOn, pollOn, pollInterval); if (pollInterval !== "") onToast(`轮询间隔已设为 ${pollInterval} 分钟`); }}
+              />
+              <div className="hint">留空则使用系统设置默认值（当前 {settings?.pollIntervalMin ?? 15} 分钟）</div>
+            </div>
+          </div>
+          {manualOnly && (
+            <div className="card card-pad" data-od-id="sync-manual-only-hint">
+              <div style={{ fontSize: 13, color: "var(--muted)" }}>两个自动同步开关均未启用（或未绑定已实现同步源）— <strong style={{ color: "var(--fg)" }}>仅手动上传 / 手动同步</strong>。</div>
+            </div>
+          )}
         </div>
       )}
+
+      {tab === "notify" && (
+        <div className="card card-pad" style={{ maxWidth: 640 }} data-od-id="app-notify-tab">
+          <div className="panel-title">邮件通知</div>
+          <div className="hint" style={{ marginBottom: 14 }}>经 notify 队列异步发送。成功类邮件正文含各平台 AppDock 下载链接（非 GitHub）。</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="switch-row" data-od-id="notify-master">
+              <div>
+                <div style={{ fontWeight: 500 }}>启用通知</div>
+                <div className="hint">关闭后本应用不入队邮件任务</div>
+              </div>
+              <label className="switch"><input type="checkbox" checked={notifyForm.notifyEnabled} onChange={e => setNotifyForm(f => ({ ...f, notifyEnabled: e.target.checked }))} /><span /></label>
+            </div>
+            <div style={{ opacity: notifyForm.notifyEnabled ? 1 : 0.45, pointerEvents: notifyForm.notifyEnabled ? "auto" : "none", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8 }}>事件</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[
+                    ["notifyOnSyncSuccess", "同步成功"],
+                    ["notifyOnSyncFailure", "同步失败"],
+                    ["notifyOnManualUpload", "手动上传成功"],
+                  ].map(([k, label]) => (
+                    <label key={k} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                      <input type="checkbox" checked={!!notifyForm[k]} onChange={e => setNotifyForm(f => ({ ...f, [k]: e.target.checked }))} />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="field">
+                <label>自定义收件人</label>
+                <textarea className="textarea mono" rows={3} value={notifyForm.notifyEmails} onChange={e => setNotifyForm(f => ({ ...f, notifyEmails: e.target.value }))} placeholder="每行一个邮箱" data-od-id="notify-emails" />
+              </div>
+              <div className="switch-row">
+                <div>
+                  <div style={{ fontWeight: 500 }}>通知应用成员</div>
+                  <div className="hint">按下方角色过滤成员邮箱</div>
+                </div>
+                <label className="switch"><input type="checkbox" checked={notifyForm.notifyMembers} onChange={e => setNotifyForm(f => ({ ...f, notifyMembers: e.target.checked }))} /><span /></label>
+              </div>
+              {notifyForm.notifyMembers && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, paddingLeft: 4 }}>
+                  {ROLE_OPTS.map(r => (
+                    <label key={r.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                      <input type="checkbox" checked={notifyForm.notifyMemberRoles.includes(r.id)} onChange={() => toggleNotifyRole(r.id)} />
+                      <span className="mono">{r.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <div className="switch-row">
+                <div>
+                  <div style={{ fontWeight: 500 }}>自定义为空时使用全局默认</div>
+                  <div className="hint">回落到系统设置中的默认收件人</div>
+                </div>
+                <label className="switch"><input type="checkbox" checked={notifyForm.notifyUseGlobalFallback} onChange={e => setNotifyForm(f => ({ ...f, notifyUseGlobalFallback: e.target.checked }))} /><span /></label>
+              </div>
+              <div className="hint">收件人 = 自定义邮箱 ∪ 成员角色 ∪ 全局回落（去重）</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button type="button" className="btn btn-primary" data-od-id="notify-save" onClick={saveNotify}>保存</button>
+              <button type="button" className="btn" data-od-id="notify-test" onClick={() => onToast("已发送测试通知（示意）")} disabled={!notifyForm.notifyEnabled}>发送测试通知</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AccessCodesPage({ codes, setCodes, apps, onToast, adminUser }) {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editBind, setEditBind] = useState(null);
+  const [reveal, setReveal] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [form, setForm] = useState({
+    note: "", expiresAt: "", maxUses: "", appIds: [], customMode: false, customCode: "",
+  });
+  const pwdApps = apps.filter(a => a.visibility === "password");
+  const appMap = Object.fromEntries(apps.map(a => [a.id, a]));
+
+  const resetForm = () => setForm({ note: "", expiresAt: "", maxUses: "", appIds: [], customMode: false, customCode: "" });
+
+  const toggleApp = (id) => setForm(f => ({
+    ...f,
+    appIds: f.appIds.includes(id) ? f.appIds.filter(x => x !== id) : [...f.appIds, id],
+  }));
+
+  const submitCreate = () => {
+    if (!form.note.trim()) { onToast("请填写备注"); return; }
+    if (form.appIds.length === 0) { onToast("请至少绑定一个口令应用"); return; }
+    let plain, prefix;
+    if (form.customMode) {
+      plain = form.customCode.trim();
+      if (plain.length < 8) { onToast("自定义口令至少 8 位"); return; }
+      prefix = plain.slice(0, 8);
+    } else {
+      const g = genAccessCode();
+      plain = g.plain;
+      prefix = g.prefix;
+    }
+    const row = {
+      id: "ac_" + Date.now(),
+      note: form.note.trim(),
+      codePrefix: prefix,
+      plainCode: plain,
+      status: "active",
+      expiresAt: form.expiresAt ? form.expiresAt.replace("T", " ") : "",
+      maxUses: form.maxUses === "" ? null : Number(form.maxUses),
+      usedCount: 0,
+      appIds: [...form.appIds],
+      createdBy: adminUser?.name || "管理员",
+      lastUsedAt: "—",
+    };
+    setCodes(ls => [row, ...ls]);
+    setCreateOpen(false);
+    resetForm();
+    setReveal({ plain, note: row.note, kind: "create" });
+  };
+
+  const doRotate = (c) => {
+    const g = genAccessCode();
+    setCodes(ls => ls.map(x => x.id === c.id ? { ...x, codePrefix: g.prefix, plainCode: g.plain, usedCount: 0, lastUsedAt: "—" } : x));
+    setReveal({ plain: g.plain, note: c.note, kind: "rotate" });
+    onToast("口令已轮换");
+  };
+
+  const copyPlain = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      onToast("已复制口令");
+    } catch {
+      onToast("复制失败，请手动选择");
+    }
+  };
+
+  const usesLabel = (c) => {
+    if (c.maxUses == null) return `${c.usedCount} / ∞`;
+    return `${c.usedCount} / ${c.maxUses}`;
+  };
+
+  return (
+    <div data-od-id="page-admin-access-codes">
+      <div className="page-hd">
+        <div>
+          <h1>访问口令</h1>
+          <div className="sub">全局签发 · 一条口令可绑定多个「口令」可见应用 · 仅解锁下载站</div>
+        </div>
+        <button type="button" className="btn btn-primary" data-od-id="ac-create-btn" onClick={() => { resetForm(); setCreateOpen(true); }}>
+          <Icon d={I.plus} size={15} />签发口令
+        </button>
+      </div>
+      <div className="table-wrap">
+        <table className="data">
+          <thead>
+            <tr>
+              <th>备注</th><th>前缀</th><th>状态</th><th>过期</th><th>次数</th><th>绑定应用</th><th>创建人</th><th>最近使用</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {codes.map(c => {
+              const expired = isCodeExpired(c);
+              const statusTone = c.status !== "active" ? "muted" : expired ? "warn" : "success";
+              const statusLabel = c.status !== "active" ? "停用" : expired ? "已过期" : "启用";
+              return (
+                <tr key={c.id} data-od-id={`ac-row-${c.id}`}>
+                  <td style={{ fontWeight: 600 }}>{c.note}</td>
+                  <td className="mono" style={{ fontSize: 12 }}>{maskCodePrefix(c.codePrefix)}</td>
+                  <td><Pill tone={statusTone}>{statusLabel}</Pill></td>
+                  <td className="mono muted" style={{ fontSize: 12 }}>{c.expiresAt || "不过期"}</td>
+                  <td className="mono" style={{ fontSize: 12 }}>{usesLabel(c)}</td>
+                  <td>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {(c.appIds || []).map(id => appMap[id] ? <Pill key={id} tone="info">{appMap[id].name}</Pill> : null)}
+                      {(c.appIds || []).length === 0 && <span className="muted">—</span>}
+                    </div>
+                  </td>
+                  <td>{c.createdBy}</td>
+                  <td className="mono muted" style={{ fontSize: 12 }}>{c.lastUsedAt || "—"}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      <button type="button" className="btn btn-sm" onClick={() => {
+                        setCodes(ls => ls.map(x => x.id === c.id ? { ...x, status: x.status === "active" ? "disabled" : "active" } : x));
+                        onToast(c.status === "active" ? "已停用" : "已启用");
+                      }}>{c.status === "active" ? "停用" : "启用"}</button>
+                      <button type="button" className="btn btn-sm" onClick={() => setEditBind({ id: c.id, appIds: [...(c.appIds || [])] })}>编辑绑定</button>
+                      <button type="button" className="btn btn-sm" onClick={() => doRotate(c)}>轮换</button>
+                      <button type="button" className="btn btn-sm" onClick={() => copyPlain(c.plainCode)}><Icon d={I.copy} size={12} />复制</button>
+                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => setDetail(c)}>详情</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <Modal open={createOpen} title="签发访问口令" onClose={() => setCreateOpen(false)} footer={
+        <>
+          <button type="button" className="btn" onClick={() => setCreateOpen(false)}>取消</button>
+          <button type="button" className="btn btn-primary" data-od-id="ac-submit" onClick={submitCreate}>签发</button>
+        </>
+      }>
+        <div className="auth-stack">
+          <div className="field"><label>备注</label><input className="input" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="如：Q3 内测群" data-od-id="ac-note" /></div>
+          <div className="field"><label>过期时间</label><input className="input" type="datetime-local" value={form.expiresAt} onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))} /><div className="hint">留空表示不过期</div></div>
+          <div className="field"><label>最大使用次数</label><input className="input mono" value={form.maxUses} onChange={e => setForm(f => ({ ...f, maxUses: e.target.value.replace(/[^\d]/g, "") }))} placeholder="留空 = 不限" /></div>
+          <div className="field">
+            <label>绑定应用（仅口令可见）</label>
+            {pwdApps.length === 0 ? (
+              <div className="hint">暂无 visibility=password 的应用</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {pwdApps.map(a => (
+                  <label key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                    <input type="checkbox" checked={form.appIds.includes(a.id)} onChange={() => toggleApp(a.id)} />
+                    <span>{a.name}</span>
+                    <span className="mono muted">{a.slug}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="switch-row">
+            <div><div style={{ fontWeight: 500 }}>自定义口令</div><div className="hint">关闭则由系统生成</div></div>
+            <label className="switch"><input type="checkbox" checked={form.customMode} onChange={e => setForm(f => ({ ...f, customMode: e.target.checked }))} /><span /></label>
+          </div>
+          {form.customMode && (
+            <div className="field"><label>自定义明文</label><input className="input mono" value={form.customCode} onChange={e => setForm(f => ({ ...f, customCode: e.target.value }))} placeholder="至少 8 位" /></div>
+          )}
+        </div>
+      </Modal>
+
+      <Modal open={!!editBind} title="编辑绑定应用" onClose={() => setEditBind(null)} footer={
+        <>
+          <button type="button" className="btn" onClick={() => setEditBind(null)}>取消</button>
+          <button type="button" className="btn btn-primary" onClick={() => {
+            if (!editBind) return;
+            setCodes(ls => ls.map(x => x.id === editBind.id ? { ...x, appIds: [...editBind.appIds] } : x));
+            setEditBind(null);
+            onToast("绑定已更新");
+          }}>保存</button>
+        </>
+      }>
+        {editBind && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {pwdApps.map(a => (
+              <label key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={editBind.appIds.includes(a.id)} onChange={() => setEditBind(b => ({
+                  ...b,
+                  appIds: b.appIds.includes(a.id) ? b.appIds.filter(x => x !== a.id) : [...b.appIds, a.id],
+                }))} />
+                <span>{a.name}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!reveal} title={reveal?.kind === "rotate" ? "口令已轮换" : "口令已签发"} onClose={() => setReveal(null)} footer={
+        <>
+          <button type="button" className="btn" onClick={() => reveal && copyPlain(reveal.plain)}><Icon d={I.copy} size={14} />复制口令</button>
+          <button type="button" className="btn btn-primary" data-od-id="ac-reveal-done" onClick={() => setReveal(null)}>我已保存</button>
+        </>
+      }>
+        {reveal && (
+          <div>
+            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>建议立即复制；之后也可在列表中再次复制（生产环境由服务端主密钥解密）。</p>
+            <div className="field">
+              <label>{reveal.note}</label>
+              <div className="mono" style={{ padding: "12px 14px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-dim)", fontSize: 15, wordBreak: "break-all" }} data-od-id="ac-plain-reveal">{reveal.plain}</div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!detail} title="口令详情" onClose={() => setDetail(null)} footer={
+        <>
+          <button type="button" className="btn" onClick={() => detail && copyPlain(detail.plainCode)}><Icon d={I.copy} size={14} />复制口令</button>
+          <button type="button" className="btn btn-primary" onClick={() => setDetail(null)}>关闭</button>
+        </>
+      }>
+        {detail && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">备注</span><span>{detail.note}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">前缀</span><span className="mono">{maskCodePrefix(detail.codePrefix)}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">状态</span><span>{detail.status}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">过期</span><span className="mono">{detail.expiresAt || "不过期"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">次数</span><span className="mono">{usesLabel(detail)}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">创建人</span><span>{detail.createdBy}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span className="muted">最近使用</span><span className="mono">{detail.lastUsedAt}</span></div>
+            <div className="hint" style={{ marginTop: 4 }}>列表可随时 reveal 再复制；生产环境由服务端主密钥解密，无需用户密钥对。</div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -1175,16 +2219,16 @@ function AppAdminDetail({ app, onSync, onToast, users }) {
 function UsersPage({ users, onToast }) {
   const [list, setList] = useState(users);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", role: "operator" });
+  const [form, setForm] = useState({ name: "", email: "", role: "user" });
   return (
     <div data-od-id="page-admin-users">
       <div className="page-hd">
-        <div><h1>用户管理</h1><div className="sub">系统角色与账号启停（admin）</div></div>
+        <div><h1>用户管理</h1><div className="sub">系统角色仅 admin / user；应用级 viewer·operator·manager 在应用「成员授权」中配置</div></div>
         <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}><Icon d={I.plus} size={15} />创建用户</button>
       </div>
       <div className="table-wrap">
         <table className="data">
-          <thead><tr><th>用户</th><th>邮箱</th><th>角色</th><th>状态</th><th>最近登录</th><th></th></tr></thead>
+          <thead><tr><th>用户</th><th>邮箱</th><th>系统角色</th><th>状态</th><th>最近登录</th><th></th></tr></thead>
           <tbody>
             {list.map(u => (
               <tr key={u.id}>
@@ -1210,19 +2254,19 @@ function UsersPage({ users, onToast }) {
           <button type="button" className="btn btn-primary" onClick={() => {
             if (!form.name || !form.email) return;
             setList(ls => [...ls, { id: "u" + Date.now(), ...form, status: "active", lastLogin: "—" }]);
-            setOpen(false); setForm({ name: "", email: "", role: "operator" }); onToast("用户已创建");
+            setOpen(false); setForm({ name: "", email: "", role: "user" }); onToast("用户已创建");
           }}>创建</button>
         </>
       }>
         <div className="auth-stack">
           <div className="field"><label>姓名</label><input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-          <div className="field"><label>邮箱</label><input className="input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
-          <div className="field"><label>角色</label>
+          <div className="field"><label>邮箱（必填）</label><input className="input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="用于通知成员" /></div>
+          <div className="field"><label>系统角色</label>
             <select className="select" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
-              <option value="admin">admin</option>
-              <option value="operator">operator</option>
-              <option value="viewer">viewer</option>
+              <option value="user">user 普通用户</option>
+              <option value="admin">admin 系统管理员</option>
             </select>
+            <div className="hint">viewer / operator / manager 不是系统角色</div>
           </div>
         </div>
       </Modal>
@@ -1232,15 +2276,22 @@ function UsersPage({ users, onToast }) {
 
 function JobsPage({ jobs, onToast }) {
   const [q, setQ] = useState("all");
-  const list = jobs.filter(j => q === "all" || j.queue === q);
+  const [st, setSt] = useState("all");
+  const [detail, setDetail] = useState(null);
+  const list = jobs.filter(j => (q === "all" || j.queue === q) && (st === "all" || j.status === st));
   return (
     <div data-od-id="page-admin-jobs">
       <div className="page-hd">
-        <div><h1>任务队列</h1><div className="sub">release-sync / asset-download / notify</div></div>
+        <div><h1>任务队列</h1><div className="sub">release-sync / asset-download / notify · 点行查看日志</div></div>
       </div>
-      <div className="filter-chips" style={{ marginBottom: 16 }}>
+      <div className="filter-chips" style={{ marginBottom: 8 }}>
         {["all", "release-sync", "asset-download", "notify"].map(x => (
           <button key={x} type="button" className={`chip ${q === x ? "active" : ""}`} onClick={() => setQ(x)}>{x === "all" ? "全部队列" : x}</button>
+        ))}
+      </div>
+      <div className="filter-chips" style={{ marginBottom: 16 }}>
+        {["all", "success", "running", "failed"].map(x => (
+          <button key={x} type="button" className={`chip ${st === x ? "active" : ""}`} onClick={() => setSt(x)}>{x === "all" ? "全部状态" : x}</button>
         ))}
       </div>
       <div className="table-wrap">
@@ -1248,7 +2299,7 @@ function JobsPage({ jobs, onToast }) {
           <thead><tr><th>ID</th><th>队列</th><th>应用</th><th>Trigger</th><th>状态</th><th>耗时</th><th>时间</th><th>消息</th><th></th></tr></thead>
           <tbody>
             {list.map(j => (
-              <tr key={j.id} data-od-id={`job-row-${j.id}`}>
+              <tr key={j.id} data-od-id={`job-row-${j.id}`} style={{ cursor: "pointer" }} onClick={() => setDetail(j)}>
                 <td className="mono" style={{ fontSize: 12 }}>{j.id}</td>
                 <td className="mono">{j.queue}</td>
                 <td>{j.app}</td>
@@ -1257,37 +2308,245 @@ function JobsPage({ jobs, onToast }) {
                 <td className="mono">{j.duration}</td>
                 <td className="mono muted" style={{ fontSize: 12 }}>{j.createdAt}</td>
                 <td style={{ maxWidth: 220, fontSize: 12 }} className="muted">{j.message}</td>
-                <td>{j.status === "failed" && <button type="button" className="btn btn-sm" onClick={() => onToast(`已重试 ${j.id}`)}>重试</button>}</td>
+                <td onClick={e => e.stopPropagation()}>{j.status === "failed" && <button type="button" className="btn btn-sm" onClick={() => onToast(`已重试 ${j.id}`)}>重试</button>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <Modal open={!!detail} title={detail ? `任务 ${detail.id}` : ""} onClose={() => setDetail(null)} footer={
+        <>
+          <button type="button" className="btn" onClick={() => setDetail(null)}>关闭</button>
+          {detail?.status === "failed" && <button type="button" className="btn btn-primary" onClick={() => { onToast(`已重试 ${detail.id}`); setDetail(null); }}>重试</button>}
+        </>
+      }>
+        {detail && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
+            <div><span className="muted">队列</span> · <span className="mono">{detail.queue}</span> · {detail.app} · <StatusJob s={detail.status} /></div>
+            <div className="muted">{detail.message}</div>
+            <div className="panel-title" style={{ marginTop: 8 }}>同步日志</div>
+            <pre className="mono" style={{ margin: 0, padding: 12, borderRadius: 8, background: "var(--surface-2)", border: "1px solid var(--border)", fontSize: 12, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{(detail.logs || ["（无日志）"]).join("\n")}</pre>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
 
-function SettingsPage({ settings, setSettings, onToast }) {
+function isSmtpReady(s) {
+  return !!(s.smtpHost && s.smtpFromEmail && (s.smtpPasswordSet || s.smtpPasswordDraft));
+}
+
+function MailSettingsTab({ settings, setSettings, onToast }) {
+  const [pwdDraft, setPwdDraft] = useState("");
+  const [testOpen, setTestOpen] = useState(false);
+  const firstRecipient = (settings.smtpDefaultRecipients || "").split(/\n/).map(x => x.trim()).filter(Boolean)[0] || "";
+  const [testTo, setTestTo] = useState(firstRecipient);
+  const ready = isSmtpReady({ ...settings, smtpPasswordDraft: pwdDraft });
+
+  const set = (k, v) => setSettings(s => ({ ...s, [k]: v }));
+
+  const onEncryption = (v) => {
+    set("smtpEncryption", v);
+    if (v === "ssl_tls" && settings.smtpPort !== 465) {
+      set("smtpPort", 465);
+      onToast("已建议端口 465（SSL/TLS）");
+    } else if (v === "starttls" && settings.smtpPort !== 587) {
+      set("smtpPort", 587);
+      onToast("已建议端口 587（STARTTLS）");
+    }
+  };
+
+  const save = () => {
+    setSettings(s => ({
+      ...s,
+      smtpPasswordSet: s.smtpPasswordSet || !!pwdDraft,
+    }));
+    setPwdDraft("");
+    onToast("邮件设置已保存");
+  };
+
+  const sendTest = () => {
+    const to = (testTo || firstRecipient || "").trim();
+    if (!to) { onToast("请填写测试收件人"); return; }
+    setTestOpen(false);
+    onToast(`测试邮件已发送 → ${to}`);
+  };
+
   return (
-    <div data-od-id="page-admin-settings">
-      <div className="page-hd"><div><h1>系统设置</h1><div className="sub">站点与同步基础设施</div></div></div>
-      <div className="card card-pad" style={{ maxWidth: 640 }}>
-        <div className="form-grid">
-          <div className="field span-2"><label>站点名称</label><input className="input" value={settings.siteName} onChange={e => setSettings(s => ({ ...s, siteName: e.target.value }))} /></div>
-          <div className="field"><label>轮询间隔（分钟）</label><input className="input mono" type="number" value={settings.pollIntervalMin} onChange={e => setSettings(s => ({ ...s, pollIntervalMin: Number(e.target.value) }))} /></div>
-          <div className="field"><label>上传大小上限（MB）</label><input className="input mono" type="number" value={settings.uploadMaxMb} onChange={e => setSettings(s => ({ ...s, uploadMaxMb: Number(e.target.value) }))} /></div>
-          <div className="field span-2"><label>对外 Base URL</label><input className="input mono" value={settings.publicBaseUrl} onChange={e => setSettings(s => ({ ...s, publicBaseUrl: e.target.value }))} /></div>
-          <div className="span-2">
-            <div className="switch-row">
-              <div>
-                <div style={{ fontWeight: 500 }}>GitHub Token</div>
-                <div className="hint">{settings.githubTokenConfigured ? "已配置 · 末尾 …k9f2" : "未配置"}</div>
-              </div>
-              <Pill tone={settings.githubTokenConfigured ? "success" : "warn"}>{settings.githubTokenConfigured ? "已配置" : "未配置"}</Pill>
+    <div className="card card-pad" data-od-id="settings-smtp">
+      <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span>邮件 / SMTP</span>
+        <Pill tone={ready ? "success" : "warn"}>{ready ? "已配置" : "未配置"}</Pill>
+      </div>
+      <div className="hint" style={{ marginBottom: 14 }}>以管理端配置为准；密码只写不回显。</div>
+      <div className="form-grid">
+        <div className="span-2">
+          <div className="switch-row">
+            <div>
+              <div style={{ fontWeight: 500 }}>启用邮件通知</div>
+              <div className="hint">关闭后队列仍可入队但不发送</div>
             </div>
+            <label className="switch" data-od-id="smtp-enabled"><input type="checkbox" checked={!!settings.smtpEnabled} onChange={e => set("smtpEnabled", e.target.checked)} /><span /></label>
           </div>
         </div>
-        <button type="button" className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => onToast("设置已保存")}>保存设置</button>
+        <div className="field">
+          <label>SMTP Host</label>
+          <input className="input mono" value={settings.smtpHost || ""} onChange={e => set("smtpHost", e.target.value)} placeholder="smtp.example.com" data-od-id="smtp-host" />
+        </div>
+        <div className="field">
+          <label>Port</label>
+          <input className="input mono" type="number" value={settings.smtpPort ?? 465} onChange={e => set("smtpPort", Number(e.target.value))} data-od-id="smtp-port" />
+          <div className="hint">465 常配 SSL/TLS；587 常配 STARTTLS</div>
+        </div>
+        <div className="field">
+          <label>加密方式</label>
+          <select className="select" value={settings.smtpEncryption || "ssl_tls"} onChange={e => onEncryption(e.target.value)} data-od-id="smtp-encryption">
+            <option value="ssl_tls">SSL/TLS</option>
+            <option value="starttls">STARTTLS</option>
+            <option value="none">无</option>
+          </select>
+        </div>
+        <div className="field">
+          <label>连接超时（秒）</label>
+          <input className="input mono" type="number" value={settings.smtpConnectTimeoutSec ?? 15} onChange={e => set("smtpConnectTimeoutSec", Number(e.target.value))} />
+        </div>
+        <div className="field">
+          <label>用户名</label>
+          <input className="input mono" value={settings.smtpUsername || ""} onChange={e => set("smtpUsername", e.target.value)} />
+        </div>
+        <div className="field">
+          <label>密码</label>
+          <input
+            className="input mono"
+            type="password"
+            value={pwdDraft}
+            onChange={e => setPwdDraft(e.target.value)}
+            placeholder={settings.smtpPasswordSet ? "已设置，留空则不修改" : "输入 SMTP 密码"}
+            autoComplete="new-password"
+            data-od-id="smtp-password"
+          />
+          <div className="hint">{settings.smtpPasswordSet ? "已设置；留空保存则保留原密码" : "保存后密码不会回显"}</div>
+        </div>
+        <div className="field">
+          <label>发件人名称</label>
+          <input className="input" value={settings.smtpFromName || ""} onChange={e => set("smtpFromName", e.target.value)} />
+        </div>
+        <div className="field">
+          <label>发件人邮箱</label>
+          <input className="input mono" value={settings.smtpFromEmail || ""} onChange={e => set("smtpFromEmail", e.target.value)} data-od-id="smtp-from-email" />
+        </div>
+        <div className="field span-2">
+          <label>回信地址 Reply-To（可选）</label>
+          <input className="input mono" value={settings.smtpReplyTo || ""} onChange={e => set("smtpReplyTo", e.target.value)} placeholder="support@example.com" />
+        </div>
+        <div className="field span-2">
+          <label>全局默认收件人</label>
+          <textarea
+            className="textarea mono"
+            rows={4}
+            value={settings.smtpDefaultRecipients || ""}
+            onChange={e => set("smtpDefaultRecipients", e.target.value)}
+            placeholder="每行一个邮箱"
+            data-od-id="smtp-default-recipients"
+          />
+          <div className="hint">应用级自定义为空且开启回落时使用</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+        <button type="button" className="btn btn-primary" onClick={save} data-od-id="smtp-save">保存设置</button>
+        <button type="button" className="btn" data-od-id="smtp-test" onClick={() => { setTestTo(firstRecipient); setTestOpen(true); }} disabled={!ready || !settings.smtpEnabled}>发送测试邮件</button>
+      </div>
+      <Modal
+        open={testOpen}
+        title="发送测试邮件"
+        onClose={() => setTestOpen(false)}
+        footer={
+          <>
+            <button type="button" className="btn" onClick={() => setTestOpen(false)}>取消</button>
+            <button type="button" className="btn btn-primary" onClick={sendTest}>发送</button>
+          </>
+        }
+      >
+        <div className="field">
+          <label>测试收件人</label>
+          <input className="input mono" value={testTo} onChange={e => setTestTo(e.target.value)} placeholder="you@example.com" data-od-id="smtp-test-to" />
+          <div className="hint">默认取全局收件人第一行</div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function SettingsPage({ settings, setSettings, onToast, initialTab }) {
+  const tabs = [
+    { k: "general", l: "常规" },
+    { k: "sync", l: "同步" },
+    { k: "mail", l: "邮件" },
+  ];
+  const valid = tabs.some(t => t.k === initialTab) ? initialTab : "general";
+  const [tab, setTab] = useState(valid);
+  useEffect(() => {
+    if (tabs.some(t => t.k === initialTab)) setTab(initialTab);
+  }, [initialTab]);
+
+  const goTab = (k) => {
+    setTab(k);
+    navigate(k === "general" ? "/admin/settings" : `/admin/settings?tab=${k}`);
+  };
+
+  return (
+    <div data-od-id="page-admin-settings">
+      <div className="page-hd"><div><h1>系统设置</h1><div className="sub">按分类管理系统基础设施</div></div></div>
+      <div className="tabs" data-od-id="settings-tabs">
+        {tabs.map(({ k, l }) => (
+          <button key={k} type="button" className={`tab ${tab === k ? "active" : ""}`} onClick={() => goTab(k)}>{l}</button>
+        ))}
+      </div>
+      <div style={{ maxWidth: 640 }}>
+        {tab === "general" && (
+          <div className="card card-pad" data-od-id="settings-general">
+            <div className="panel-title">站点</div>
+            <div className="form-grid">
+              <div className="field span-2"><label>站点名称</label><input className="input" value={settings.siteName} onChange={e => setSettings(s => ({ ...s, siteName: e.target.value }))} /></div>
+              <div className="field span-2"><label>对外 Base URL</label><input className="input mono" value={settings.publicBaseUrl} onChange={e => setSettings(s => ({ ...s, publicBaseUrl: e.target.value }))} /></div>
+              <div className="field"><label>上传大小上限（MB）</label><input className="input mono" type="number" value={settings.uploadMaxMb} onChange={e => setSettings(s => ({ ...s, uploadMaxMb: Number(e.target.value) }))} /></div>
+              <div className="field span-2"><label>存储根路径（只读）</label><input className="input mono" value={settings.storageRoot || "/data/files"} readOnly /><div className="hint">来自 APPDOCK_STORAGE_ROOT · 备份须含此目录与 SQLite</div></div>
+            </div>
+            <button type="button" className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => onToast("设置已保存")}>保存设置</button>
+          </div>
+        )}
+        {tab === "sync" && (
+          <div className="card card-pad" data-od-id="settings-sync">
+            <div className="panel-title">同步默认与凭据</div>
+            <div className="hint" style={{ marginBottom: 14 }}>Token / Secret 来自环境变量，界面仅展示配置态。</div>
+            <div className="form-grid">
+              <div className="field"><label>默认轮询间隔（分钟）</label><input className="input mono" type="number" value={settings.pollIntervalMin} onChange={e => setSettings(s => ({ ...s, pollIntervalMin: Number(e.target.value) }))} /></div>
+              <div className="span-2">
+                <div className="switch-row">
+                  <div>
+                    <div style={{ fontWeight: 500 }}>GitHub Token</div>
+                    <div className="hint">{settings.githubTokenConfigured ? "已配置 · 末尾 …k9f2" : "未配置"}</div>
+                  </div>
+                  <Pill tone={settings.githubTokenConfigured ? "success" : "warn"}>{settings.githubTokenConfigured ? "已配置" : "未配置"}</Pill>
+                </div>
+              </div>
+              <div className="span-2">
+                <div className="switch-row">
+                  <div>
+                    <div style={{ fontWeight: 500 }}>Webhook Secret</div>
+                    <div className="hint">{settings.webhookSecretConfigured ? "已配置 · 用于校验 GitHub 签名" : "未配置"}</div>
+                  </div>
+                  <Pill tone={settings.webhookSecretConfigured ? "success" : "warn"}>{settings.webhookSecretConfigured ? "已配置" : "未配置"}</Pill>
+                </div>
+              </div>
+            </div>
+            <button type="button" className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => onToast("同步设置已保存")}>保存设置</button>
+          </div>
+        )}
+        {tab === "mail" && (
+          <MailSettingsTab settings={settings} setSettings={setSettings} onToast={onToast} />
+        )}
       </div>
     </div>
   );
@@ -1306,6 +2565,7 @@ function App() {
     try { return JSON.parse(sessionStorage.getItem("ad:pw") || "{}"); } catch { return {}; }
   });
   const [apps, setApps] = useState(APPS);
+  const [accessCodes, setAccessCodes] = useState(ACCESS_CODES_DEFAULT);
   const [jobs] = useState(JOBS);
   const [settings, setSettings] = useState(SETTINGS_DEFAULT);
   const [toast, setToast] = useState("");
@@ -1319,24 +2579,80 @@ function App() {
 
   const showToast = useCallback(m => setToast(m), []);
 
-  const requireAdmin = (node) => {
-    if (!adminUser) return <AdminLogin onLogin={u => { setAdminUser(u); sessionStorage.setItem("ad:admin", JSON.stringify(u)); navigate("/admin"); }} />;
-    return <AdminShell route={route} user={adminUser} onLogout={() => { setAdminUser(null); sessionStorage.removeItem("ad:admin"); navigate("/admin/login"); }}>{node}</AdminShell>;
+  const persistAdmin = (u) => {
+    setAdminUser(u);
+    if (u) sessionStorage.setItem("ad:admin", JSON.stringify(u));
+    else sessionStorage.removeItem("ad:admin");
   };
 
+  const requireAdmin = (node) => {
+    if (!adminUser) {
+      return <AdminLogin onLogin={u => {
+        persistAdmin(u);
+        navigate(u.mustChangePassword ? "/admin/change-password" : "/admin");
+      }} />;
+    }
+    if (adminUser.mustChangePassword) {
+      return <ForceChangePassword user={adminUser} onDone={u => { persistAdmin(u); showToast("密码已更新"); navigate("/admin"); }} />;
+    }
+    return <AdminShell route={route} user={adminUser} onLogout={() => { persistAdmin(null); navigate("/admin/login"); }}>{node}</AdminShell>;
+  };
+
+  const lockSlug = (slug) => {
+    if (slug == null) {
+      setUnlocked({});
+      sessionStorage.removeItem("ad:pw");
+      showToast("已退出全部口令会话");
+      return;
+    }
+    const next = { ...unlocked };
+    delete next[slug];
+    setUnlocked(next);
+    sessionStorage.setItem("ad:pw", JSON.stringify(next));
+    showToast(`已退出「${slug}」口令会话`);
+  };
+
+  const pubShell = (node) => (
+    <PublicShell
+      route={route}
+      publicUser={publicUser}
+      unlockedSlugs={unlocked}
+      onPublicLogout={() => { setPublicUser(null); sessionStorage.removeItem("ad:pub"); showToast("已登出"); }}
+      onLockSlug={lockSlug}
+    >{node}</PublicShell>
+  );
+
   const gateApp = (app, inner) => {
-    if (!app) return <PublicShell route={route}><ForbiddenPage title="应用不存在" desc="找不到该应用，可能已被下线或 slug 错误。" /></PublicShell>;
+    if (!app) {
+      return pubShell(<ForbiddenPage title="应用不存在" desc="找不到该应用，可能 slug 错误或已被下线。" code="404 NOT_FOUND" icon="box" />);
+    }
+    if (app.status === "archived") {
+      return pubShell(<ForbiddenPage title="应用已归档" desc="该应用已停止对外分发，历史包不再提供下载。" code="410 ARCHIVED" icon="alert" />);
+    }
     if (app.visibility === "password" && !unlocked[app.slug]) {
-      return <PasswordGate app={app} onUnlock={slug => {
+      return <PasswordGate app={app} accessCodes={accessCodes} onUnlock={(slug, codeId) => {
         const next = { ...unlocked, [slug]: true };
         setUnlocked(next);
         sessionStorage.setItem("ad:pw", JSON.stringify(next));
+        if (codeId) {
+          const now = new Date();
+          const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+          setAccessCodes(ls => ls.map(c => c.id === codeId ? { ...c, usedCount: (c.usedCount || 0) + 1, lastUsedAt: stamp } : c));
+        }
       }} />;
     }
     if (app.visibility === "login" && !publicUser) {
       return <PublicLogin onLogin={(u, redir) => { setPublicUser(u); sessionStorage.setItem("ad:pub", JSON.stringify(u)); navigate(redir || `/a/${app.slug}`); }} redirect={`/a/${app.slug}`} />;
     }
-    return <PublicShell route={route}>{inner}</PublicShell>;
+    const withLock = app.visibility === "password" ? (
+      <div>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+          <button type="button" className="btn btn-ghost btn-sm" data-od-id="lock-this-app" onClick={() => lockSlug(app.slug)}>退出本应用口令</button>
+        </div>
+        {inner}
+      </div>
+    ) : inner;
+    return pubShell(withLock);
   };
 
   const { parts, path } = route;
@@ -1344,47 +2660,113 @@ function App() {
 
   // Admin routes
   if (path === "/admin/login") {
-    view = <AdminLogin onLogin={u => { setAdminUser(u); sessionStorage.setItem("ad:admin", JSON.stringify(u)); navigate("/admin"); }} />;
+    view = <AdminLogin onLogin={u => {
+      persistAdmin(u);
+      navigate(u.mustChangePassword ? "/admin/change-password" : "/admin");
+    }} />;
+  } else if (path === "/admin/change-password") {
+    if (!adminUser) {
+      view = <AdminLogin onLogin={u => {
+        persistAdmin(u);
+        navigate(u.mustChangePassword ? "/admin/change-password" : "/admin");
+      }} />;
+    } else {
+      view = <ForceChangePassword user={adminUser} onDone={u => { persistAdmin(u); showToast("密码已更新"); navigate("/admin"); }} />;
+    }
   } else if (path === "/admin" || path.startsWith("/admin/")) {
     if (path === "/admin") view = requireAdmin(<Dashboard apps={apps} jobs={jobs} />);
     else if (path === "/admin/apps") view = requireAdmin(<AppsList apps={apps} />);
     else if (path === "/admin/apps/new") view = requireAdmin(
       <AppForm title="新建应用" onSave={f => {
         const id = "app_" + f.slug;
+        const impl = providerMeta(f.releaseProvider).implemented;
+        const bound = f.releaseProvider !== "none" && f.releaseOwner && f.releaseRepo;
+        const syncOn = !!f.syncEnabled && impl && bound;
         setApps(a => [...a, {
           id, name: f.name, slug: f.slug, summary: f.summary || "新应用",
-          visibility: f.visibility, syncEnabled: f.syncEnabled,
-          github: f.githubOwner ? { owner: f.githubOwner, repo: f.githubRepo } : null,
+          visibility: f.visibility,
+          releaseProvider: f.releaseProvider || "none",
+          releaseOwner: f.releaseOwner || "",
+          releaseRepo: f.releaseRepo || "",
+          releaseBaseUrl: f.releaseBaseUrl || "",
+          syncEnabled: syncOn,
+          syncWebhookEnabled: syncOn && !!f.syncWebhookEnabled,
+          syncPollEnabled: syncOn && !!f.syncPollEnabled,
+          syncPollIntervalMin: f.syncPollIntervalMin === "" || f.syncPollIntervalMin == null ? "" : Number(f.syncPollIntervalMin),
+          github: bound && f.releaseProvider === "github" ? { owner: f.releaseOwner, repo: f.releaseRepo } : null,
           includeGlob: f.includeGlob, color: "oklch(72% 0.13 195)", initials: (f.name || "AP").slice(0, 2).toUpperCase(),
-          platforms: ["Windows"], latest: "—", syncStatus: f.syncEnabled ? "ok" : "manual", lastSyncAt: "—",
+          platforms: ["Windows"], latest: "—", status: "active",
+          syncStatus: (syncOn && (f.syncWebhookEnabled || f.syncPollEnabled)) ? "ok" : "manual",
+          lastSyncAt: "—",
           members: [], versions: [],
         }]);
-        showToast("应用已创建");
+        showToast(!impl && f.releaseProvider !== "none" ? "已保存（Provider 二期，同步未启用）" : "应用已创建");
         navigate("/admin/apps");
       }} />
     );
     else if (parts[0] === "admin" && parts[1] === "apps" && parts[2] && parts[3] === "edit") {
       const app = apps.find(a => a.id === parts[2]);
       view = requireAdmin(app ? (
-        <AppForm title={`编辑 ${app.name}`} initial={{
+        <AppForm title={`编辑 ${app.name}`} slugLocked initial={{
           name: app.name, slug: app.slug, summary: app.summary,
-          githubOwner: app.github?.owner || "", githubRepo: app.github?.repo || "",
-          visibility: app.visibility, syncEnabled: app.syncEnabled, includeGlob: app.includeGlob || "",
-        }} onSave={f => { showToast("应用已更新"); navigate(`/admin/apps/${app.id}`); }} />
+          releaseProvider: app.releaseProvider || (app.github ? "github" : "none"),
+          releaseOwner: app.releaseOwner || app.github?.owner || "",
+          releaseRepo: app.releaseRepo || app.github?.repo || "",
+          releaseBaseUrl: app.releaseBaseUrl || "",
+          visibility: app.visibility, syncEnabled: app.syncEnabled,
+          syncWebhookEnabled: !!app.syncWebhookEnabled, syncPollEnabled: !!app.syncPollEnabled,
+          syncPollIntervalMin: app.syncPollIntervalMin === "" || app.syncPollIntervalMin == null ? "" : String(app.syncPollIntervalMin),
+          includeGlob: app.includeGlob || "",
+        }} onSave={f => {
+          const impl = providerMeta(f.releaseProvider).implemented;
+          const bound = f.releaseProvider !== "none" && f.releaseOwner && f.releaseRepo;
+          const syncOn = !!f.syncEnabled && impl && bound;
+          setApps(list => list.map(x => x.id === app.id ? {
+            ...x,
+            name: f.name, summary: f.summary, visibility: f.visibility,
+            releaseProvider: f.releaseProvider || "none",
+            releaseOwner: f.releaseOwner || "",
+            releaseRepo: f.releaseRepo || "",
+            releaseBaseUrl: f.releaseBaseUrl || "",
+            syncEnabled: syncOn,
+            syncWebhookEnabled: syncOn && !!f.syncWebhookEnabled,
+            syncPollEnabled: syncOn && !!f.syncPollEnabled,
+            syncPollIntervalMin: f.syncPollIntervalMin === "" || f.syncPollIntervalMin == null ? "" : Number(f.syncPollIntervalMin),
+            github: bound && f.releaseProvider === "github" ? { owner: f.releaseOwner, repo: f.releaseRepo } : null,
+            includeGlob: f.includeGlob,
+            syncStatus: (syncOn && (f.syncWebhookEnabled || f.syncPollEnabled)) ? (x.syncStatus === "manual" ? "ok" : x.syncStatus) : "manual",
+          } : x));
+          showToast(!impl && f.releaseProvider !== "none" ? "已更新（Provider 二期，同步未启用）" : "应用已更新");
+          navigate(`/admin/apps/${app.id}`);
+        }} />
       ) : <ForbiddenPage title="应用不存在" />);
     } else if (parts[0] === "admin" && parts[1] === "apps" && parts[2]) {
       const app = apps.find(a => a.id === parts[2]);
       view = requireAdmin(app ? (
-        <AppAdminDetail app={app} users={USERS} onSync={() => {}} onToast={showToast} />
+        <AppAdminDetail
+          key={app.id}
+          app={app}
+          users={USERS}
+          settings={settings}
+          accessCodes={accessCodes}
+          onSync={() => {}}
+          onToast={showToast}
+          onPatchApp={(id, patch) => setApps(list => list.map(x => x.id === id ? { ...x, ...patch } : x))}
+        />
       ) : <ForbiddenPage title="应用不存在" />);
-    } else if (path === "/admin/users") view = requireAdmin(<UsersPage users={USERS} onToast={showToast} />);
+    } else if (path === "/admin/access-codes") view = requireAdmin(
+      <AccessCodesPage codes={accessCodes} setCodes={setAccessCodes} apps={apps} onToast={showToast} adminUser={adminUser} />
+    );
+    else if (path === "/admin/users") view = requireAdmin(<UsersPage users={USERS} onToast={showToast} />);
     else if (path === "/admin/jobs") view = requireAdmin(<JobsPage jobs={jobs} onToast={showToast} />);
-    else if (path === "/admin/settings") view = requireAdmin(<SettingsPage settings={settings} setSettings={setSettings} onToast={showToast} />);
+    else if (path === "/admin/settings") view = requireAdmin(<SettingsPage settings={settings} setSettings={setSettings} onToast={showToast} initialTab={route.query.tab || "general"} />);
     else view = requireAdmin(<ForbiddenPage title="页面不存在" desc="管理端路由未匹配。" />);
   } else if (path === "/login") {
     view = <PublicLogin onLogin={(u) => { setPublicUser(u); sessionStorage.setItem("ad:pub", JSON.stringify(u)); navigate("/"); }} />;
+  } else if (path === "/docs/update-check") {
+    view = pubShell(<UpdateCheckDocsPage toast={showToast} />);
   } else if (path === "/empty" || path === "/forbidden") {
-    view = <PublicShell route={route}><ForbiddenPage /></PublicShell>;
+    view = pubShell(<ForbiddenPage code="403 FORBIDDEN" />);
   } else if (parts[0] === "a" && parts[1] && parts[2] === "v" && parts[3]) {
     const app = apps.find(a => a.slug === parts[1]);
     view = gateApp(app, <VersionPage app={app} tag={parts[3]} onDownload={() => {}} toast={showToast} />);
@@ -1392,9 +2774,9 @@ function App() {
     const app = apps.find(a => a.slug === parts[1]);
     view = gateApp(app, <AppDetailPage app={app} onDownload={() => {}} toast={showToast} />);
   } else if (path === "/" || path === "") {
-    view = <PublicShell route={route}><HomePage apps={apps} /></PublicShell>;
+    view = pubShell(<HomePage apps={apps} />);
   } else {
-    view = <PublicShell route={route}><ForbiddenPage title="页面不存在" desc="请从首页进入，或检查链接是否正确。" /></PublicShell>;
+    view = pubShell(<ForbiddenPage title="页面不存在" desc="请从首页进入，或检查链接是否正确。" code="404 NOT_FOUND" icon="box" />);
   }
 
   return (

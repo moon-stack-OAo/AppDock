@@ -1,0 +1,31 @@
+{
+  "name": "appdock",
+  "version": "0.0.1",
+  "private": true,
+  "description": "AppDock — 自托管应用分发中心",
+  "packageManager": "pnpm@10.9.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma"
+    ]
+  },
+  "scripts": {
+    "dev:server": "pnpm --filter @appdock/server start:dev",
+    "dev:worker": "pnpm --filter @appdock/server start:worker:dev",
+    "dev:web": "pnpm --filter @appdock/web dev",
+    "build": "pnpm --filter @appdock/shared build && pnpm --filter @appdock/server build && pnpm --filter @appdock/web build",
+    "build:shared": "pnpm --filter @appdock/shared build",
+    "prisma:generate": "pnpm --filter @appdock/server prisma:generate",
+    "prisma:push": "pnpm --filter @appdock/server prisma:push",
+    "prisma:migrate": "pnpm --filter @appdock/server prisma:migrate",
+    "seed": "pnpm --filter @appdock/server seed",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck"
+  }
+}

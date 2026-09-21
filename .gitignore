@@ -1,1 +1,23 @@
 /.idea/
+.DS_Store
+Thumbs.db
+
+# 密钥与本地环境
+.env
+.env.*
+!.env.example
+
+# 运行时数据（安装包与 SQLite）
+/data/*
+!/data/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+*.tsbuildinfo
+
+# 依赖与构建（实现后）
+node_modules/
+dist/
+coverage/
+*.log
+package-lock.json
