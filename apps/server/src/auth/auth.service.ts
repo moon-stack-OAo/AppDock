@@ -11,6 +11,7 @@ import { Response } from "express";
 import { User } from "@prisma/client";
 import { UserStatus } from "@appdock/shared";
 import { PublicUser, UsersService } from "../users/users.service";
+import { AuditService } from "../audit/audit.service";
 import {
   AccessTokenPayload,
   REFRESH_COOKIE_NAME,
@@ -32,6 +33,7 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly audit: AuditService,
   ) {}
 
   get accessTtlSec(): number {
@@ -163,6 +165,13 @@ export class AuthService {
     this.logger.log(
       `user.password_change userId=${updated.id} username=${updated.username}`,
     );
+    await this.audit.record({
+      actorUserId: updated.id,
+      action: "user.password_change",
+      targetType: "user",
+      targetId: updated.id,
+      meta: { username: updated.username },
+    });
 
     const newRefresh = await this.signRefresh(updated);
     this.setRefreshCookie(res, newRefresh);

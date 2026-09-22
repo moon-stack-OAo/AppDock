@@ -27,14 +27,17 @@ export class ApiError extends Error {
 type RequestOptions = {
   method?: string;
   body?: unknown;
+  form?: FormData;
   auth?: boolean;
   /** 跳过 401 自动 refresh（避免 refresh 自身递归） */
   skipRefresh?: boolean;
+  /** 401 时不要清掉登录会话（公开下载页的口令/登录墙） */
+  keepSession?: boolean;
 };
 
 let refreshPromise: Promise<boolean> | null = null;
 
-async function tryRefresh(): Promise<boolean> {
+async function tryRefresh(keepSession = false): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
     try {
@@ -44,18 +47,18 @@ async function tryRefresh(): Promise<boolean> {
         headers: { Accept: "application/json" },
       });
       if (!res.ok) {
-        clearSession();
+        if (!keepSession) clearSession();
         return false;
       }
       const data = (await res.json()) as { accessToken?: string };
       if (!data.accessToken) {
-        clearSession();
+        if (!keepSession) clearSession();
         return false;
       }
       setAccessToken(data.accessToken);
       return true;
     } catch {
-      clearSession();
+      if (!keepSession) clearSession();
       return false;
     } finally {
       refreshPromise = null;
@@ -68,11 +71,11 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { method = "GET", body, auth = true, skipRefresh = false } = options;
+  const { method = "GET", body, form, auth = true, skipRefresh = false, keepSession = false } = options;
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
-  if (body !== undefined) {
+  if (body !== undefined && form === undefined) {
     headers["Content-Type"] = "application/json";
   }
   if (auth) {
@@ -86,11 +89,11 @@ export async function apiRequest<T>(
     method,
     credentials: "include",
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
   });
 
   if (res.status === 401 && auth && !skipRefresh) {
-    const refreshed = await tryRefresh();
+    const refreshed = await tryRefresh(keepSession);
     if (refreshed) {
       return apiRequest<T>(path, { ...options, skipRefresh: true });
     }

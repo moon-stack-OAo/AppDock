@@ -1,50 +1,48 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRouter } from "vue-router";
-import AppLogo from "@/components/AppLogo.vue";
-import { logout as logoutApi } from "@/api/auth";
-import { clearSession, session } from "@/auth/session";
+import { onMounted, ref } from "vue";
+import { RouterLink } from "vue-router";
+import { listApps } from "@/api/apps";
+import { ApiError } from "@/api/http";
+import { session } from "@/auth/session";
 
-const router = useRouter();
-const loggingOut = ref(false);
+const appCount = ref<number | null>(null);
+const error = ref("");
 
-async function onLogout() {
-  loggingOut.value = true;
+onMounted(async () => {
   try {
-    await logoutApi();
-  } catch {
-    /* 本地仍清会话 */
-  } finally {
-    clearSession();
-    loggingOut.value = false;
-    await router.replace({ name: "admin-login" });
+    const apps = await listApps();
+    appCount.value = apps.length;
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : "加载应用数量失败";
   }
-}
+});
 </script>
 
 <template>
-  <div class="admin-shell">
-    <header class="admin-top">
-      <AppLogo :size="24" to="/admin" />
-      <div style="display: flex; align-items: center; gap: 12px">
-        <span class="muted" style="font-size: 13px">
-          {{ session.user?.displayName || session.user?.username }}
-        </span>
-        <button
-          type="button"
-          class="btn btn-ghost"
-          :disabled="loggingOut"
-          @click="onLogout"
-        >
-          {{ loggingOut ? "退出中…" : "登出" }}
-        </button>
+  <div>
+    <div class="page-hd">
+      <div>
+        <h1>概览</h1>
+        <div class="sub">M1：用户与应用</div>
       </div>
-    </header>
-    <main class="admin-content">
-      <div class="page-hd">
-        <div>
-          <h1>仪表盘</h1>
-          <div class="sub">M0 占位 — 应用管理等功能后续里程碑实现</div>
+    </div>
+    <div class="form-grid" style="align-items: start">
+      <div
+        class="card"
+        style="
+          padding: 20px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-lg);
+          background: var(--surface);
+        "
+      >
+        <div class="muted t-12" style="margin-bottom: 6px">当前用户</div>
+        <div class="t-16" style="font-weight: 600">
+          {{ session.user?.username }}
+        </div>
+          <div class="muted t-13" style="margin-top: 4px">
+          {{ session.user?.email }}
+          <span v-if="session.user?.role" class="mono"> · {{ session.user.role }}</span>
         </div>
       </div>
       <div
@@ -54,18 +52,19 @@ async function onLogout() {
           border: 1px solid var(--border);
           border-radius: var(--radius-lg);
           background: var(--surface);
-          max-width: 480px;
         "
       >
-        <div class="muted" style="font-size: 12px; margin-bottom: 6px">当前用户</div>
-        <div style="font-size: 18px; font-weight: 600">
-          {{ session.user?.username }}
-        </div>
-        <div class="muted" style="margin-top: 4px; font-size: 13px">
-          {{ session.user?.email }}
-          <span v-if="session.user?.role" class="mono"> · {{ session.user.role }}</span>
-        </div>
+        <div class="muted t-12" style="margin-bottom: 6px">应用</div>
+        <div v-if="error" class="form-error">{{ error }}</div>
+        <template v-else>
+          <div class="t-16" style="font-weight: 600">
+            {{ appCount === null ? "…" : appCount }}
+          </div>
+        <div class="muted t-13" style="margin-top: 4px">
+            <RouterLink to="/admin/apps">前往应用列表</RouterLink>
+          </div>
+        </template>
       </div>
-    </main>
+    </div>
   </div>
 </template>

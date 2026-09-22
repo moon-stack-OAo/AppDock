@@ -72,12 +72,24 @@ pnpm prisma:generate
 pnpm prisma:push
 pnpm seed
 
-pnpm dev:server    # :3080  → GET /api/v1/health
-pnpm dev:web       # :5173  → /admin/login（/api 代理到 3080）
+pnpm dev           # 同时起 API + Web；终端会打印实际端口
+# 或分开：pnpm dev:server / pnpm dev:web
 pnpm dev:worker    # 需本机 Redis；M0 仅连通探测
 ```
 
-**M0 验收路径**：打开 `http://127.0.0.1:5173/admin/login` → `admin` + 初始密码 → 强制改密（≥8）→ `/admin`。  
+启动后看终端里带 `[urls]` 的绿色摘要（两端就绪后打印，且每分钟重刷一次，避免被 Nest 日志冲掉）：
+
+```text
+  AppDock 开发服务已就绪（本机 + 局域网）
+  API   http://127.0.0.1:3080/api/v1
+        http://192.168.x.x:3080/api/v1
+  Web   http://127.0.0.1:5173/admin/login
+        http://192.168.x.x:5173/admin/login
+```
+
+同一局域网设备用 **Web 的局域网地址** 打开即可（页面 `/api` 仍由 Vite 转到本机 API）。Windows 防火墙若拦截，需放行对应端口。
+
+**M0 验收路径**：用终端打印的 Web 地址打开登录页 → `admin` + 初始密码 → 强制改密（≥8）→ `/admin`。  
 Auth 冒烟（可选）：`cd apps/server && node scripts/run-with-env.cjs -- node scripts/auth-smoke.cjs`
 
 > `pnpm seed` 幂等：已改密账号不会被重置。要再演强制改密，删 `data/appdock.db*` 后重新 `prisma:push` + `seed`。
@@ -106,8 +118,14 @@ curl http://127.0.0.1:3080/api/v1/health
 | 状态     | 里程碑                                                                  |
 |--------|----------------------------------------------------------------------|
 | **完成** | **M0** 脚手架 · Compose · 健康检查 · 种子 Admin · 强制改密 · 最小 Web               |
-| 下一步    | **M1** 用户(+email) · app_members · App CRUD · Storage · audit_events  |
-| 其后     | M2 上传/yank/归档 → M3 队列+GitHub → M4 Hook → M5 下载站+口令 → M6 SMTP → M7 打磨 |
+| **完成** | **M1** 用户(+email) · app_members · App CRUD · Storage · audit_events  |
+| **完成** | **M2** 手动上传（元数据）· 补传/覆盖 · yank · 删除产物 · 公开下载鉴权 API             |
+| **完成** | **M3** 队列 + GitHub Release 同步 + 任务详情/重试                               |
+| **完成** | **M4** GitHub Webhook + 轮询兜底                                                |
+| **完成** | **M5** 下载站页面 + 口令                                                         |
+| **完成** | **M6** SMTP 通知                                                                |
+| **完成** | **M7** 平台规则、队列看板、备份步骤与维护备份 API                                  |
+| 下一步   | 二期：Gitee/GitLab                                                              |
 
 ## 预览设计稿
 

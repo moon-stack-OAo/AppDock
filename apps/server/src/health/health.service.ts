@@ -3,12 +3,14 @@ import { ConfigService } from "@nestjs/config";
 import { ApiHealthResponse } from "@appdock/shared";
 import Redis from "ioredis";
 import { PrismaService } from "../prisma/prisma.service";
+import { SettingsService } from "../settings/settings.service";
 
 @Injectable()
 export class HealthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly settings: SettingsService,
   ) {}
 
   async check(): Promise<ApiHealthResponse> {
@@ -46,11 +48,13 @@ export class HealthService {
       }
     }
 
+    const smtp = (await this.settings.smtpConfigured()) ? true : null;
     return {
       status,
       service: "appdock-api",
       db,
       ...(redis !== undefined ? { redis } : {}),
+      smtp,
       timestamp: new Date().toISOString(),
     };
   }

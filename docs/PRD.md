@@ -463,9 +463,9 @@ Version/Asset 落库的 `source`：一期 `github_release` \| `manual`；二期�
 
 页面（一期）：
 
-1. 登录（用户名或邮箱）  
-2. **强制改密**（`must_change_password`；未完成不可进其他管理页）  
-3. 仪表盘：应用数、最近同步、队列失败任务  
+1. 登录（用户名或邮箱）
+2. **强制改密**（`must_change_password`；未完成不可进其他管理页）
+3. 仪表盘：应用数、最近同步、队列失败任务
 4. 用户管理（admin）：系统角色仅 `admin` \| `user`（应用 permission 不在此配置）
 4. 应用列表 / 创建编辑（含成员授权、**归档/取消归档**）
 6. 应用详情：版本（含 **yank**）、上传（含标题/changelog/预发布/platform）、同步、**通知**、成员、Webhook/轮询
@@ -477,13 +477,13 @@ Version/Asset 落库的 `source`：一期 `github_release` \| `manual`；二期�
 
 完整审计属三期；一期须对下列敏感操作写一条 `audit_events`（或等价表），字段至少：`actorUserId`、`action`、`targetType`、`targetId`、`meta`（json）、`createdAt`。
 
-| action 示例                                              | 说明              |
-|--------------------------------------------------------|-----------------|
-| `access_code.reveal` / `rotate` / `create` / `disable` | 口令中心            |
-| `app.archive` / `unarchive` / `visibility_change`      | 应用              |
-| `version.yank` / `asset.delete`                        | 版本与产物           |
-| `user.create` / `disable` / `role_change` / `password_change` | 用户       |
-| `settings.smtp_change`                                 | SMTP 变更（不含密码明文） |
+| action 示例                                                     | 说明              |
+|---------------------------------------------------------------|-----------------|
+| `access_code.reveal` / `rotate` / `create` / `disable`        | 口令中心            |
+| `app.archive` / `unarchive` / `visibility_change`             | 应用              |
+| `version.yank` / `asset.delete`                               | 版本与产物           |
+| `user.create` / `disable` / `role_change` / `password_change` | 用户              |
+| `settings.smtp_change`                                        | SMTP 变更（不含密码明文） |
 
 管理端可不做独立审计 UI（可 SQL / 日志查看）；二期再做查询页。
 
@@ -698,7 +698,7 @@ asset_id、ip_hash、user_agent、created_at；或仅 `assets.download_count++`�
 }
 ```
 
-- 鉴权：  
+- 鉴权：
     - **管理端 / 登录用户（已定 JWT）**：`Authorization: Bearer <access_token>`
     - **访问口令会话**：HttpOnly Cookie `access_session`（与 JWT 分离，仅下载站）
 
@@ -729,9 +729,15 @@ asset_id、ip_hash、user_agent、created_at；或仅 `assets.download_count++`�
 
 ```json
 // req
-{ "login": "admin", "password": "***" }
+{
+  "login": "admin",
+  "password": "***"
+}
 // 或
-{ "login": "qi@moonlab.io", "password": "***" }
+{
+  "login": "qi@moonlab.io",
+  "password": "***"
+}
 // res
 {
   "accessToken": "...",
@@ -769,9 +775,14 @@ Cookie refresh → 新 `accessToken`（可轮换 refresh）。
 
 ```json
 // req
-{ "currentPassword": "***", "newPassword": "***" }
+{
+  "currentPassword": "***",
+  "newPassword": "***"
+}
 // res 200
-{ "ok": true }
+{
+  "ok": true
+}
 ```
 
 规则：校验旧密 → 新密强度（一期：≥8 位即可）→ 更新 `password_hash` → 清 `must_change_password` → **写审计** `user.password_change` → 可选轮换 refresh。失败统一 `400`（旧密错误不细分枚举防探测，可与「新密不合规」用 `code` 区分）。
@@ -1221,11 +1232,11 @@ Cookie refresh → 新 `accessToken`（可轮换 refresh）。
 ### 8.1 GitHub（一期）
 
 1. Repo → Settings → Webhooks → Add
-2. Payload URL：`{publicBaseUrl}/api/v1/hooks/github`  
-3. Content type：`application/json`  
-4. Secret：与 AppDock 中配置一致  
-5. Events：选 `Releases`  
-6. 确保 AppDock 能被 GitHub 访问（公网或 tunnel）；若不能，依赖轮询即可  
+2. Payload URL：`{publicBaseUrl}/api/v1/hooks/github`
+3. Content type：`application/json`
+4. Secret：与 AppDock 中配置一致
+5. Events：选 `Releases`
+6. 确保 AppDock 能被 GitHub 访问（公网或 tunnel）；若不能，依赖轮询即可
 
 ### 8.2 Gitee / GitLab（二期）
 
@@ -1295,16 +1306,16 @@ interface Storage {
 
 ## 12. 里程碑建议
 
-| 里程碑 | 交付                                                     | 预估量级 |
-|-----|--------------------------------------------------------|------|
+| 里程碑 | 交付                                                                                       | 预估量级 |
+|-----|------------------------------------------------------------------------------------------|------|
 | M0  | NestJS 脚手架、Compose、健康检查、种子 Admin + **强制改密**（`login`=username\|email）、上线自检清单、最小 Web 登录/改密 | 小    |
-| M1  | 用户（含 email）+ app_members、App CRUD、本地 Storage、**最低审计表** | 中    |
-| M2  | **手动上传**（元数据齐全）+ yank/归档 + 下载鉴权打通                      | 中    |
-| M3  | BullMQ 多队列 + **ReleaseProvider** + GitHub + 任务详情/日志/重试 | 中    |
-| M4  | GitHub Webhook + 轮询（Gitee/GitLab hooks 可先 501）         | 小    |
-| M5  | 公开下载页 + 三种可见性 + 口令中心 + 会话退出/登出 + 极简更新检查                | 中    |
-| M6  | **SMTP 邮件通知**（成功/失败/上传 + 应用级收件人）                       | 中    |
-| M7  | 打磨：平台推断、队列看板、**备份/恢复附录落地**                             | 小    |
+| M1  | 用户（含 email）+ app_members、App CRUD、本地 Storage、**最低审计表**                                   | 中    |
+| M2  | **手动上传**（元数据齐全）+ yank/归档 + 下载鉴权打通                                                        | 中    |
+| M3  | BullMQ 多队列 + **ReleaseProvider** + GitHub + 任务详情/日志/重试                                   | 中    |
+| M4  | GitHub Webhook + 轮询（Gitee/GitLab hooks 可先 501）                                           | 小    |
+| M5  | 公开下载页 + 三种可见性 + 口令中心 + 会话退出/登出 + 极简更新检查                                                  | 中    |
+| M6  | **SMTP 邮件通知**（成功/失败/上传 + 应用级收件人）                                                         | 中    |
+| M7  | 打磨：平台推断、队列看板、**备份/恢复附录落地**                                                               | 小    |
 
 ---
 
@@ -1413,4 +1424,4 @@ APPDOCK_SMTP_FROM_EMAIL=
 | v0.4.2 | 2026-09-21 | 下载站一期补齐：智能主下载、校验和复制、预发布开关、空状态、更新检查文档页                                                                        |
 | v0.5   | 2026-09-21 | **多源 Release 模型**：`releaseProvider` + Owner/Repo/BaseUrl；一期仅实现 GitHub；Gitee/GitLab 二期；兼容 githubOwner/Repo 别名 |
 | v0.5.1 | 2026-09-21 | **P0 补强**：一期=分发非构建；`login` 语义；users.email；最低审计；备份/引导/单机写约束；归档/yank/会话退出写入需求                                  |
-| v0.5.2 | 2026-09-21 | 登录标识 `login`=username\|email；补 `POST /auth/change-password` 与强制改密拦截                                               |
+| v0.5.2 | 2026-09-21 | 登录标识 `login`=username\|email；补 `POST /auth/change-password` 与强制改密拦截                                          |

@@ -21,5 +21,217 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  memberships AppMember[]
+  auditEvents AuditEvent[] @relation("AuditActor")
+  createdVersions Version[] @relation("VersionCreator")
+  uploadedAssets Asset[] @relation("AssetUploader")
+  createdAccessCodes AccessCode[] @relation("AccessCodeCreator")
+
   @@map("users")
+}
+
+/// 应用（PRD §4.1）
+model App {
+  id                  String   @id @default(cuid())
+  name                String
+  slug                String   @unique
+  description         String?
+  releaseProvider     String   @default("none") // none|github|gitee|gitlab
+  releaseOwner        String?
+  releaseRepo         String?
+  releaseBaseUrl      String?
+  releaseProjectId    String?
+  visibility          String   @default("login") // public|password|login
+  syncWebhookEnabled  Boolean  @default(false)
+  syncPollEnabled     Boolean  @default(false)
+  syncPollIntervalSec Int?
+  assetIncludeGlob    String?
+  assetExcludeGlob    String?
+  platformRulesJson   String? // JSON 文本
+  latestReleaseOnly   Boolean  @default(false)
+  storagePrefix       String?
+  iconUrl             String?
+  sortOrder           Int      @default(0)
+  status              String   @default("active") // active|archived
+  notifyEnabled       Boolean  @default(false)
+  notifyOnSyncSuccess Boolean  @default(true)
+  notifyOnSyncFailure Boolean  @default(true)
+  notifyOnUploadSuccess Boolean @default(true)
+  notifyEmails        String? // JSON 字符串数组
+  notifyMemberRoles   String? // JSON 字符串数组
+  notifyUseGlobalFallback Boolean @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  members AppMember[]
+  versions Version[]
+  syncJobs SyncJob[]
+  accessCodeApps AccessCodeApp[]
+
+  @@map("apps")
+}
+
+/// 应用成员权限
+model AppMember {
+  id         String   @id @default(cuid())
+  appId      String
+  userId     String
+  permission String // viewer|operator|manager
+  createdAt  DateTime @default(now())
+
+  app  App  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, userId])
+  @@index([userId])
+  @@map("app_members")
+}
+
+/// 审计事件（metaJson 仅存脱敏 JSON）
+model AuditEvent {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  targetType  String
+  targetId    String?
+  metaJson    String? // JSON 文本，脱敏
+  createdAt   DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_events")
+}
+
+/// 版本（PRD §4.4）
+model Version {
+  id              String    @id @default(cuid())
+  appId           String
+  tagName         String
+  name            String?
+  body            String?
+  isPrerelease    Boolean   @default(false)
+  isLatest        Boolean   @default(false)
+  publishedAt     DateTime?
+  status          String    @default("active") // active | yanked
+  source          String    @default("manual") // github_release | manual
+  remoteReleaseId String?
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  app     App     @relation(fields: [appId], references: [id], onDelete: Cascade)
+  creator User?   @relation("VersionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assets  Asset[]
+
+  @@unique([appId, tagName])
+  @@index([appId, status])
+  @@map("versions")
+}
+
+/// 安装包产物
+model Asset {
+  id               String   @id @default(cuid())
+  versionId        String
+  name             String
+  platform         String   @default("unknown")
+  arch             String   @default("unknown")
+  contentType      String?
+  size             Int
+  checksumSha256   String
+  storageKey       String
+  downloadCount    Int      @default(0)
+  remoteAssetId    String?
+  source           String   @default("manual")
+  uploadedByUserId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  version  Version @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  uploader User?   @relation("AssetUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([versionId, name])
+  @@index([versionId])
+  @@map("assets")
+}
+
+/// 同步任务（PRD §6.5）
+model SyncJob {
+  id         String    @id @default(cuid())
+  appId      String
+  trigger    String // webhook | poll | manual
+  status     String    @default("queued") // queued | running | success | failed
+  message    String?
+  startedAt  DateTime?
+  finishedAt DateTime?
+  statsJson  String?
+  createdAt  DateTime  @default(now())
+
+  app  App       @relation(fields: [appId], references: [id], onDelete: Cascade)
+  logs SyncLog[]
+
+  @@index([appId, createdAt])
+  @@index([status])
+  @@map("sync_jobs")
+}
+
+/// 同步日志（PRD §6.6）
+model SyncLog {
+  id        String   @id @default(cuid())
+  jobId     String
+  level     String // info | warning | error
+  message   String
+  createdAt DateTime @default(now())
+
+  job SyncJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+  @@map("sync_logs")
+}
+
+/// 访问口令（PRD §6.1.2）。expired 不落库，读时按 expiresAt / usedCount 计算。
+model AccessCode {
+  id              String    @id @default(cuid())
+  note            String    @default("")
+  codeHash        String    @unique
+  /// AES-256-GCM：base64(iv 12 + tag 16 + ciphertext)
+  codeEnc         String
+  codePrefix      String
+  status          String    @default("active") // active | disabled
+  expiresAt       DateTime?
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  lastUsedAt      DateTime?
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  creator User            @relation("AccessCodeCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  apps    AccessCodeApp[]
+
+  @@index([status])
+  @@map("access_codes")
+}
+
+/// 口令绑定的 password 应用（PRD §6.1.3）
+model AccessCodeApp {
+  accessCodeId String
+  appId        String
+
+  accessCode AccessCode @relation(fields: [accessCodeId], references: [id], onDelete: Cascade)
+  app        App        @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@id([accessCodeId, appId])
+  @@index([appId])
+  @@map("access_code_apps")
+}
+
+/// 全局键值设置（SMTP、站点、通知默认收件人）。已有行不以环境变量覆盖。
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
 }

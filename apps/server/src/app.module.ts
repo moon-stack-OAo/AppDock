@@ -5,6 +5,16 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { HealthModule } from "./health/health.module";
 import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
+import { AuditModule } from "./audit/audit.module";
+import { StorageModule } from "./storage/storage.module";
+import { AppsModule } from "./apps/apps.module";
+import { VersionsModule } from "./versions/versions.module";
+import { SyncModule } from "./sync/sync.module";
+import { HooksModule } from "./hooks/hooks.module";
+import { AccessCodesModule } from "./access-codes/access-codes.module";
+import { SettingsModule } from "./settings/settings.module";
+import { NotifyModule } from "./notify/notify.module";
+import { MaintenanceModule } from "./maintenance/maintenance.module";
 
 @Module({
   imports: [
@@ -19,9 +29,19 @@ import { UsersModule } from "./users/users.module";
       ],
     }),
     PrismaModule,
+    AuditModule,
+    StorageModule,
     HealthModule,
     UsersModule,
     AuthModule,
+    AppsModule,
+    VersionsModule,
+    AccessCodesModule,
+    SyncModule,
+    HooksModule,
+    SettingsModule,
+    NotifyModule,
+    MaintenanceModule,
   ],
 })
 export class AppModule {}

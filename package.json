@@ -16,6 +16,7 @@
     ]
   },
   "scripts": {
+    "dev": "concurrently -n server,web,urls -c cyan,magenta,green \"pnpm dev:server\" \"pnpm dev:web\" \"node scripts/wait-and-print-urls.mjs\"",
     "dev:server": "pnpm --filter @appdock/server start:dev",
     "dev:worker": "pnpm --filter @appdock/server start:worker:dev",
     "dev:web": "pnpm --filter @appdock/web dev",
@@ -27,5 +28,8 @@
     "seed": "pnpm --filter @appdock/server seed",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
   }
 }
