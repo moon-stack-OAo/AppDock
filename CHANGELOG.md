@@ -2,6 +2,17 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。发版时按 tag 截取对应 `## [x.y.z]` 章节写入 GitHub Release。
 
+## [0.2.0] - 2026-09-29
+
+### 新增
+
+- 应用表单可粘贴 GitHub 仓库或 Release 地址，自动填入同步源、名称、slug 与简介
+- 手动上传改为 50MB 分片，避开 100MB 限制
+
+### 修复
+
+- Node 运行包支持首次 seed，并打包多平台 Prisma 引擎
+
 ## [0.1.0] - 2026-09-29
 
 ### 新增
