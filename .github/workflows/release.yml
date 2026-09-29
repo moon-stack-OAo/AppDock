@@ -105,11 +105,38 @@ jobs:
       - name: Pack node bundle
         run: node scripts/pack-release.mjs
 
+      - name: Release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ github.ref_name }}"
+          prev="$(git tag --sort=-v:refname | grep -v "^${tag}$" | head -n1 || true)"
+          {
+            echo "## ${tag}"
+            echo
+            echo "镜像：\`ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):${tag#v}\` 与 \`:latest\`"
+            echo
+            echo "Node 包：\`appdock-node.tgz\`（解压后放 \`.env\`，\`npx prisma db push\`，再 \`node dist/main.js\` 与 \`node dist/worker.main.js\`）"
+            echo
+            echo "### 变更"
+            echo
+            if [ -n "$prev" ]; then
+              git log --no-merges --pretty=format:'- %s' "${prev}..HEAD"
+            else
+              git log --no-merges --pretty=format:'- %s'
+            fi
+            echo
+          } > /tmp/notes.md
+
       - name: Upload to Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release view "${{ github.ref_name }}" >/dev/null 2>&1 \
-            || gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --notes "AppDock ${{ github.ref_name }}"
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            gh release edit "${{ github.ref_name }}" --title "${{ github.ref_name }}" --notes-file /tmp/notes.md
+          else
+            gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --notes-file /tmp/notes.md
+          fi
           gh release upload "${{ github.ref_name }}" dist/appdock-node.tgz --clobber
