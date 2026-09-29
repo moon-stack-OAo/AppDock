@@ -2,8 +2,9 @@
 /**
  * 打 Node 发行包（不含源码）：api / worker / web + 生产依赖。
  * 用法：在仓库根先 pnpm build && pnpm prisma:generate，再 node scripts/pack-release.mjs
- * 产物：dist/appdock-node.tgz，解压后在该目录放 .env 即可启动。
+ * 产物：dist/appdock-node.tgz、dist/latest.yml。解压后在该目录放 .env 即可启动。
  */
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -75,4 +76,30 @@ const packed = spawnSync("tar", ["-czf", archive, "-C", path.join(root, "dist"),
   shell: true,
 });
 if (packed.status !== 0) process.exit(packed.status ?? 1);
+
+const version = (process.env.APPDOCK_VERSION || serverPkg.version || "0.0.0").replace(/^v/, "");
+const sha256 = createHash("sha256").update(fs.readFileSync(archive)).digest("hex");
+const size = fs.statSync(archive).size;
+const repo =
+  process.env.GITHUB_REPOSITORY ||
+  process.env.APPDOCK_REPOSITORY ||
+  "moon-stack-OAo/AppDock";
+const base =
+  process.env.APPDOCK_RELEASE_BASE?.replace(/\/$/, "") ||
+  `https://github.com/${repo}/releases/download`;
+const manifest = [
+  `version: ${version}`,
+  "files:",
+  "  - url: appdock-node.tgz",
+  `    sha256: ${sha256}`,
+  `    size: ${size}`,
+  `path: appdock-node.tgz`,
+  `sha256: ${sha256}`,
+  `releaseDate: ${new Date().toISOString()}`,
+  `downloadUrl: ${base}/v${version}/appdock-node.tgz`,
+  "",
+].join("\n");
+const latest = path.join(root, "dist", "latest.yml");
+fs.writeFileSync(latest, manifest);
 console.log(archive);
+console.log(latest);

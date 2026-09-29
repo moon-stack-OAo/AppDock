@@ -125,7 +125,7 @@ npx tsx prisma/seed.ts # 仅首次：按 .env 创建管理员
 node dist/main.js      # 另开：node dist/worker.main.js
 ```
 
-下次更新：再下载同名包覆盖（保留 `.env` 与 `data/`），然后 `npx prisma db push` 并重启两个进程。`scripts/update-host.sh` 仍是拉源码编译的备选。
+下次更新：`bash scripts/update-node.sh`。它先读 Release 上的 `latest.yml`，版本与本地 `VERSION` 相同则跳过；否则校验 sha256 后覆盖（保留 `.env` 与 `data/`），再 `prisma db push` 并重启。`scripts/update-host.sh` 仍是拉源码编译的备选。
 
 服务：`api` · `worker` · `redis`；宿主机 `./data` → 容器 `/data`。  
 镜像入口：`node dist/main.js` / `node dist/worker.main.js`（工作目录 `apps/server`）。
