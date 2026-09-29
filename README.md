@@ -121,6 +121,7 @@ curl -fsSL -o appdock-node.tgz \
 tar -xzf appdock-node.tgz --strip-components=1
 cp .env.example .env   # 改密钥；DATABASE 用 file:data/appdock.db，REDIS 用 127.0.0.1
 npx prisma db push
+npx tsx prisma/seed.ts # 仅首次：按 .env 创建管理员
 node dist/main.js      # 另开：node dist/worker.main.js
 ```
 

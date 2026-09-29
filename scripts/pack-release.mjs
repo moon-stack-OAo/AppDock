@@ -19,6 +19,8 @@ const prodDeps = { ...serverPkg.dependencies };
 delete prodDeps["@appdock/shared"];
 prodDeps["@prisma/client"] = serverPkg.dependencies["@prisma/client"];
 prodDeps.prisma = serverPkg.devDependencies.prisma;
+prodDeps.bcryptjs = serverPkg.dependencies.bcryptjs;
+prodDeps.tsx = "^4.20.3";
 
 fs.rmSync(stage, { recursive: true, force: true });
 fs.mkdirSync(path.join(stage, "web"), { recursive: true });
@@ -36,6 +38,7 @@ const pkg = {
     start: "node dist/main.js",
     worker: "node dist/worker.main.js",
     "prisma:push": "prisma db push",
+    seed: "tsx prisma/seed.ts",
   },
   dependencies: prodDeps,
 };
@@ -48,11 +51,20 @@ const install = spawnSync("npm", ["install", "--omit=dev", "--ignore-scripts"], 
 });
 if (install.status !== 0) process.exit(install.status ?? 1);
 
-const generate = spawnSync("npx", ["prisma", "generate"], {
-  cwd: stage,
-  stdio: "inherit",
-  shell: true,
-});
+const generate = spawnSync(
+  "npx",
+  ["prisma", "generate", "--generator", "client"],
+  {
+    cwd: stage,
+    stdio: "inherit",
+    shell: true,
+    env: {
+      ...process.env,
+      PRISMA_CLI_BINARY_TARGETS:
+        "debian-openssl-3.0.x,rhel-openssl-3.0.x,linux-musl-openssl-3.0.x,darwin,darwin-arm64,windows",
+    },
+  },
+);
 if (generate.status !== 0) process.exit(generate.status ?? 1);
 
 fs.mkdirSync(path.join(root, "dist"), { recursive: true });

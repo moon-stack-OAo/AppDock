@@ -132,7 +132,7 @@ jobs:
               '',
               '镜像：\`' + image + ':' + ver + '\` 与 \`:latest\`',
               '',
-              'Node 包：\`appdock-node.tgz\`（解压后放 \`.env\`，\`npx prisma db push\`，再 \`node dist/main.js\` 与 \`node dist/worker.main.js\`）',
+              'Node 包：\`appdock-node.tgz\`（解压后放 \`.env\`，\`npx prisma db push\`，首次再 \`npx tsx prisma/seed.ts\`，然后 \`node dist/main.js\` 与 \`node dist/worker.main.js\`）',
               '',
               ...lines.slice(start + 1, end),
               '',
