@@ -18,11 +18,14 @@ import { SettingsModule } from "./settings/settings.module";
 import { NotifyModule } from "./notify/notify.module";
 import { MaintenanceModule } from "./maintenance/maintenance.module";
 
-const webRoot = path.resolve(__dirname, "../../web/dist");
+const webRoot = [
+  path.resolve(__dirname, "../../web/dist"),
+  path.resolve(__dirname, "../web"),
+].find((dir) => fs.existsSync(path.join(dir, "index.html")));
 
 @Module({
   imports: [
-    ...(fs.existsSync(webRoot)
+    ...(webRoot
       ? [
           ServeStaticModule.forRoot({
             rootPath: webRoot,

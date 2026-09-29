@@ -1,11 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
 
-/** 向上查找含 pnpm-workspace.yaml 的仓库根 */
+/** 向上查找仓库根或发行包根（含 .env 或 pnpm-workspace.yaml）。 */
 export function findRepoRoot(start = process.cwd()): string {
   let dir = start;
   for (let i = 0; i < 8; i++) {
-    if (fs.existsSync(path.join(dir, "pnpm-workspace.yaml"))) {
+    if (
+      fs.existsSync(path.join(dir, "pnpm-workspace.yaml")) ||
+      fs.existsSync(path.join(dir, ".env"))
+    ) {
       return dir;
     }
     const parent = path.dirname(dir);

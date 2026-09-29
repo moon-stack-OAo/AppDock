@@ -41,8 +41,11 @@ async function bootstrap() {
   );
   app.setGlobalPrefix(API_PREFIX.replace(/^\//, ""));
 
-  const indexHtml = path.resolve(__dirname, "../../web/dist/index.html");
-  if (fs.existsSync(indexHtml)) {
+  const indexHtml = [
+    path.resolve(__dirname, "../../web/dist/index.html"),
+    path.resolve(__dirname, "../web/index.html"),
+  ].find((file) => fs.existsSync(file));
+  if (indexHtml) {
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.method !== "GET" && req.method !== "HEAD") return next();
       const url = req.path || "/";

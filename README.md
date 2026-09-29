@@ -112,7 +112,19 @@ curl http://127.0.0.1:3080/api/v1/health
 2. 发版工作流会把 GHCR 包设为 **public**（匿名可拉，不必 `docker login`）。公开后不能再改回私有。
 3. 更新：`bash scripts/update.sh`（或 cron）。`./data` 与 `.env` 不会被覆盖。
 
-不用 Docker、本机直接跑 Node 时，改用 `bash scripts/update-host.sh`（拉 `main`、编译、`prisma db push`、重启）。有 systemd 单元 `appdock-api` / `appdock-worker` 则走 `systemctl`，否则 nohup 到 `data/run/`。仍需本机 Redis。
+不用 Docker、也不想在服务器编译源码：`v*` tag 的 Release 附带 `appdock-node.tgz`（已编译的 API、Worker、Web 和生产依赖）。解压后放 `.env`，本机装好 Redis 与 Node 20+：
+
+```bash
+mkdir -p /opt/appdock && cd /opt/appdock
+curl -fsSL -o appdock-node.tgz \
+  https://github.com/moon-stack-OAo/AppDock/releases/latest/download/appdock-node.tgz
+tar -xzf appdock-node.tgz --strip-components=1
+cp .env.example .env   # 改密钥；DATABASE 用 file:data/appdock.db，REDIS 用 127.0.0.1
+npx prisma db push
+node dist/main.js      # 另开：node dist/worker.main.js
+```
+
+下次更新：再下载同名包覆盖（保留 `.env` 与 `data/`），然后 `npx prisma db push` 并重启两个进程。`scripts/update-host.sh` 仍是拉源码编译的备选。
 
 服务：`api` · `worker` · `redis`；宿主机 `./data` → 容器 `/data`。  
 镜像入口：`node dist/main.js` / `node dist/worker.main.js`（工作目录 `apps/server`）。
