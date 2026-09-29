@@ -345,6 +345,46 @@ export class VersionsService {
         error: { code: "NOT_FOUND", message: "文件不存在" },
       });
     }
+    return this.streamAsset(asset);
+  }
+
+  /** 按文件名取非预发布最高版本中的产物，供清单写稳定直链（发版时还没有 assetId）。 */
+  async openDownloadByName(
+    slug: string,
+    fileName: string,
+    actor: User | null,
+    access: { codeId?: string; allowedAppIds: string[] } = { allowedAppIds: [] },
+  ) {
+    const name = fileName.trim();
+    if (!name || name.includes("/") || name.includes("\\") || name.includes("..")) {
+      throw new NotFoundException({
+        error: { code: "NOT_FOUND", message: "文件不存在" },
+      });
+    }
+    const app = await this.requirePublicApp(slug, actor, access);
+    const assets = await this.prisma.asset.findMany({
+      where: {
+        name,
+        version: { appId: app.id, status: VersionStatus.Active, isPrerelease: false },
+      },
+      include: { version: true },
+    });
+    const asset = pickHighestNamedAsset(assets);
+    if (!asset) {
+      throw new NotFoundException({
+        error: { code: "NOT_FOUND", message: "文件不存在" },
+      });
+    }
+    return this.streamAsset(asset);
+  }
+
+  private async streamAsset(asset: {
+    id: string;
+    name: string;
+    size: number;
+    contentType: string | null;
+    storageKey: string;
+  }) {
     await this.prisma.asset.update({
       where: { id: asset.id },
       data: { downloadCount: { increment: 1 } },
@@ -700,6 +740,15 @@ function pickHighestVersion<T extends { tagName: string; isLatest: boolean; publ
     if (a.isLatest !== b.isLatest) return a.isLatest ? -1 : 1;
     return (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0);
   })[0] ?? null;
+}
+
+function pickHighestNamedAsset<
+  T extends { version: { tagName: string; isLatest: boolean; publishedAt: Date | null } },
+>(assets: T[]): T | null {
+  if (assets.length === 0) return null;
+  const best = pickHighestVersion(assets.map((asset) => asset.version));
+  if (!best) return null;
+  return assets.find((asset) => asset.version === best) ?? null;
 }
 
 function matchAsset<T extends { platform: string; arch: string }>(

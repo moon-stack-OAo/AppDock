@@ -62,10 +62,50 @@
     .field label { font-size: 13px; color: var(--muted); font-weight: 500; }
     .field .hint { font-size: 12px; color: var(--muted); }
     .input, .select, .textarea { width: 100%; height: 36px; padding: 0 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg); color: var(--fg); transition: border-color .15s, box-shadow .15s; }
+
+    select.select, .select {
+        appearance: none;
+        height: 36px;
+        line-height: 36px;
+        padding: 0 36px 0 12px;
+        text-align: left;
+        text-align-last: left;
+        cursor: pointer;
+        color-scheme: dark;
+        background-color: var(--bg);
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa3b2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 16px 16px;
+    }
+
+    select.select:hover, .select:hover {
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23e8edf5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");
+    }
+
+    select.select:disabled, .select:disabled {
+        opacity: .55;
+        cursor: not-allowed;
+    }
     .textarea { height: auto; min-height: 88px; padding: 10px 12px; resize: vertical; }
     .input:hover, .select:hover, .textarea:hover { border-color: oklch(38% 0.016 250); }
     .input:focus, .select:focus, .textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); outline: none; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .mail-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px 24px;
+        align-items: start;
+    }
+
+    .mail-layout .mail-head, .mail-layout > .field, .mail-layout > div {
+        grid-column: 1 / -1;
+    }
+
+    .mail-layout > .form-grid {
+        grid-column: auto;
+    }
     .form-grid .span-2 { grid-column: span 2; }
     .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
     .switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
@@ -194,7 +234,11 @@
     /* Hero public */
     .hero { margin-bottom: 28px; }
     .hero h1 { font-size: 32px; font-weight: 700; letter-spacing: -.03em; margin-bottom: 8px; }
-    .hero p { color: var(--muted); max-width: 560px; font-size: 15px; }
+
+    .hero p {
+        color: var(--muted);
+        font-size: 15px;
+    }
     .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 24px; align-items: center; }
     .search { position: relative; flex: 1; min-width: 200px; max-width: 360px; }
     .search input { padding-left: 36px; }
@@ -2374,22 +2418,25 @@ function MailSettingsTab({ settings, setSettings, onToast }) {
   };
 
   return (
-    <div className="card card-pad" data-od-id="settings-smtp">
-      <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>邮件 / SMTP</span>
-        <Pill tone={ready ? "success" : "warn"}>{ready ? "已配置" : "未配置"}</Pill>
-      </div>
-      <div className="hint" style={{ marginBottom: 14 }}>以管理端配置为准；密码只写不回显。</div>
-      <div className="form-grid">
-        <div className="span-2">
-          <div className="switch-row">
-            <div>
-              <div style={{ fontWeight: 500 }}>启用邮件通知</div>
-              <div className="hint">关闭后队列仍可入队但不发送</div>
-            </div>
-            <label className="switch" data-od-id="smtp-enabled"><input type="checkbox" checked={!!settings.smtpEnabled} onChange={e => set("smtpEnabled", e.target.checked)} /><span /></label>
+      <div className="card card-pad mail-layout" data-od-id="settings-smtp">
+          <div className="mail-head">
+              <div className="panel-title"
+                   style={{display: "flex", justifyContent: "space-between", alignItems: "center"}}>
+                  <span>邮件 / SMTP</span>
+                  <Pill tone={ready ? "success" : "warn"}>{ready ? "已配置" : "未配置"}</Pill>
+              </div>
+              <div className="hint">以管理端配置为准；密码只写不回显。测试邮件直接使用当前表单，不要求先保存。</div>
+              <div className="switch-row">
+                  <div>
+                      <div style={{fontWeight: 500}}>启用邮件通知</div>
+                      <div className="hint">关闭后队列仍可入队但不发送</div>
+                  </div>
+                  <label className="switch" data-od-id="smtp-enabled"><input type="checkbox"
+                                                                             checked={!!settings.smtpEnabled}
+                                                                             onChange={e => set("smtpEnabled", e.target.checked)}/><span/></label>
+              </div>
           </div>
-        </div>
+          <div className="form-grid">
         <div className="field">
           <label>SMTP Host</label>
           <input className="input mono" value={settings.smtpHost || ""} onChange={e => set("smtpHost", e.target.value)} placeholder="smtp.example.com" data-od-id="smtp-host" />
@@ -2411,6 +2458,8 @@ function MailSettingsTab({ settings, setSettings, onToast }) {
           <label>连接超时（秒）</label>
           <input className="input mono" type="number" value={settings.smtpConnectTimeoutSec ?? 15} onChange={e => set("smtpConnectTimeoutSec", Number(e.target.value))} />
         </div>
+          </div>
+          <div className="form-grid">
         <div className="field">
           <label>用户名</label>
           <input className="input mono" value={settings.smtpUsername || ""} onChange={e => set("smtpUsername", e.target.value)} />
@@ -2436,24 +2485,20 @@ function MailSettingsTab({ settings, setSettings, onToast }) {
           <label>发件人邮箱</label>
           <input className="input mono" value={settings.smtpFromEmail || ""} onChange={e => set("smtpFromEmail", e.target.value)} data-od-id="smtp-from-email" />
         </div>
-        <div className="field span-2">
-          <label>回信地址 Reply-To（可选）</label>
-          <input className="input mono" value={settings.smtpReplyTo || ""} onChange={e => set("smtpReplyTo", e.target.value)} placeholder="support@example.com" />
-        </div>
-        <div className="field span-2">
-          <label>全局默认收件人</label>
-          <textarea
-            className="textarea mono"
-            rows={4}
-            value={settings.smtpDefaultRecipients || ""}
-            onChange={e => set("smtpDefaultRecipients", e.target.value)}
-            placeholder="每行一个邮箱"
-            data-od-id="smtp-default-recipients"
-          />
-          <div className="hint">应用级自定义为空且开启回落时使用</div>
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+          </div>
+          <div className="field">
+              <label>全局默认收件人</label>
+              <textarea
+                  className="textarea mono"
+                  rows={2}
+                  value={settings.smtpDefaultRecipients || ""}
+                  onChange={e => set("smtpDefaultRecipients", e.target.value)}
+                  placeholder="每行一个邮箱"
+                  data-od-id="smtp-default-recipients"
+              />
+              <div className="hint">应用级自定义为空且开启回落时使用</div>
+          </div>
+          <div style={{display: "flex", gap: 8, flexWrap: "wrap"}}>
         <button type="button" className="btn btn-primary" onClick={save} data-od-id="smtp-save">保存设置</button>
         <button type="button" className="btn" data-od-id="smtp-test" onClick={() => { setTestTo(firstRecipient); setTestOpen(true); }} disabled={!ready || !settings.smtpEnabled}>发送测试邮件</button>
       </div>
@@ -2471,7 +2516,7 @@ function MailSettingsTab({ settings, setSettings, onToast }) {
         <div className="field">
           <label>测试收件人</label>
           <input className="input mono" value={testTo} onChange={e => setTestTo(e.target.value)} placeholder="you@example.com" data-od-id="smtp-test-to" />
-          <div className="hint">默认取全局收件人第一行</div>
+            <div className="hint">已配置全局收件人时默认取第一行，可修改</div>
         </div>
       </Modal>
     </div>
@@ -2503,7 +2548,7 @@ function SettingsPage({ settings, setSettings, onToast, initialTab }) {
           <button key={k} type="button" className={`tab ${tab === k ? "active" : ""}`} onClick={() => goTab(k)}>{l}</button>
         ))}
       </div>
-      <div style={{ maxWidth: 640 }}>
+        <div style={tab === "mail" ? undefined : {maxWidth: 640}}>
         {tab === "general" && (
           <div className="card card-pad" data-od-id="settings-general">
             <div className="panel-title">站点</div>

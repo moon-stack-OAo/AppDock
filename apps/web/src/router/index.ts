@@ -35,6 +35,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import("@/views/public/UpdateCheckDocView.vue"),
         meta: { public: true },
       },
+      {
+        path: ":pathMatch(.*)*",
+        name: "not-found",
+        component: () => import("@/views/public/NotFoundView.vue"),
+        meta: { public: true },
+      },
     ],
   },
   {
@@ -105,10 +111,6 @@ const routes: RouteRecordRaw[] = [
         meta: { adminOnly: true },
       },
     ],
-  },
-  {
-    path: "/:pathMatch(.*)*",
-    redirect: "/",
   },
 ];
 

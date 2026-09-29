@@ -18,12 +18,20 @@ const visibilityLabel: Record<string, string> = {
   login: "登录",
 };
 
+const iconHues = [195, 145, 250, 85, 25, 310];
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const a = parts[0]?.[0];
   const b = parts[1]?.[0];
   if (a && b) return (a + b).toUpperCase();
   return name.slice(0, 2).toUpperCase();
+}
+
+function iconColor(name: string) {
+  let hash = 0;
+  for (const char of name) hash = (hash + char.charCodeAt(0)) % iconHues.length;
+  return `oklch(72% 0.13 ${iconHues[hash]})`;
 }
 
 function visTone(v: string) {
@@ -73,12 +81,13 @@ function open(id: string) {
 
 <template>
   <div>
-    <div class="page-hd" style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px">
+    <div class="page-hd">
       <div>
         <h1>应用</h1>
         <div class="sub">管理可见性、Release 同步源与成员授权</div>
       </div>
       <RouterLink v-if="isAdmin" class="btn btn-primary" to="/admin/apps/new">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         新建应用
       </RouterLink>
     </div>
@@ -86,9 +95,13 @@ function open(id: string) {
     <div v-if="error" class="form-error">{{ error }}</div>
     <p v-else-if="loading" class="muted">加载中…</p>
     <div v-else-if="apps.length === 0" class="empty">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z" /></svg>
       <h2>还没有应用</h2>
       <p>创建一个应用后即可配置可见性与同步源。</p>
-      <RouterLink v-if="isAdmin" class="btn btn-primary" to="/admin/apps/new">新建应用</RouterLink>
+      <RouterLink v-if="isAdmin" class="btn btn-primary" to="/admin/apps/new">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        新建应用
+      </RouterLink>
     </div>
     <div v-else class="table-wrap">
       <table class="data">
@@ -99,6 +112,7 @@ function open(id: string) {
             <th>可见性</th>
             <th>同步</th>
             <th>状态</th>
+            <th>最近更新</th>
             <th></th>
           </tr>
         </thead>
@@ -106,7 +120,7 @@ function open(id: string) {
           <tr v-for="app in apps" :key="app.id" style="cursor: pointer" @click="open(app.id)">
             <td>
               <div style="display: flex; gap: 10px; align-items: center">
-                <div class="app-icon">{{ initials(app.name) }}</div>
+                <div class="app-icon sm" :style="{ background: iconColor(app.name) }">{{ initials(app.name) }}</div>
                 <div>
                   <div style="font-weight: 600">{{ app.name }}</div>
                   <div class="muted t-12">{{ releaseRef(app) }}</div>
@@ -120,13 +134,15 @@ function open(id: string) {
               </span>
             </td>
             <td>
-              <span class="pill" :class="`pill-${syncTone(app)}`">{{ syncText(app) }}</span>
+              <div><span class="pill" :class="`pill-${syncTone(app)}`">{{ syncText(app) }}</span></div>
+              <div class="muted t-12" style="margin-top: 4px">{{ releaseRef(app) }}</div>
             </td>
             <td>
               <span class="pill" :class="app.status === 'archived' ? 'pill-muted' : 'pill-success'">
                 {{ app.status === "archived" ? "已归档" : "启用" }}
               </span>
             </td>
+            <td class="mono t-12">{{ app.updatedAt.slice(0, 10) }}</td>
             <td>
               <RouterLink
                 class="btn btn-sm"

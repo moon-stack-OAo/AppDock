@@ -17,13 +17,12 @@ const tab = computed<Tab>(() => {
 const loading = ref(true);
 const busy = ref(false);
 const error = ref("");
-const saved = ref("");
 const settings = ref<SettingsView | null>(null);
 
 const siteName = ref("");
 const publicBaseUrl = ref("");
 const defaultPollIntervalSec = ref(300);
-const maxAssetSizeBytes = ref(1073741824);
+const maxAssetSizeMb = ref(1024);
 const notifyEmailsText = ref("");
 const smtpEnabled = ref(false);
 const host = ref("");
@@ -34,16 +33,26 @@ const password = ref("");
 const passwordSet = ref(false);
 const fromName = ref("AppDock");
 const fromEmail = ref("");
-const replyTo = ref("");
 const connectTimeoutSec = ref(15);
+const testOpen = ref(false);
 const testTo = ref("");
+const toast = ref("");
+let toastTimer = 0;
+
+function showToast(message: string) {
+  toast.value = message;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => {
+    toast.value = "";
+  }, 2400);
+}
 
 function apply(data: SettingsView) {
   settings.value = data;
   siteName.value = data.siteName;
   publicBaseUrl.value = data.publicBaseUrl;
   defaultPollIntervalSec.value = data.defaultPollIntervalSec;
-  maxAssetSizeBytes.value = data.maxAssetSizeBytes;
+  maxAssetSizeMb.value = Math.max(1, Math.round(data.maxAssetSizeBytes / 1024 / 1024));
   notifyEmailsText.value = data.notifyGlobalEmails.join("\n");
   smtpEnabled.value = data.smtp.enabled;
   host.value = data.smtp.host;
@@ -54,7 +63,6 @@ function apply(data: SettingsView) {
   passwordSet.value = data.smtp.passwordSet;
   fromName.value = data.smtp.fromName;
   fromEmail.value = data.smtp.fromEmail;
-  replyTo.value = data.smtp.replyTo ?? "";
   connectTimeoutSec.value = data.smtp.connectTimeoutSec;
 }
 
@@ -74,8 +82,9 @@ onMounted(async () => {
 
 watch(tab, () => {
   error.value = "";
-  saved.value = "";
 });
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function emails() {
   return notifyEmailsText.value
@@ -84,34 +93,57 @@ function emails() {
     .filter(Boolean);
 }
 
+function smtpDraft() {
+  const smtp: Parameters<typeof patchSettings>[0]["smtp"] = {
+    enabled: smtpEnabled.value,
+    host: host.value.trim(),
+    port: Number(port.value) || 587,
+    encryption: encryption.value,
+    username: username.value.trim(),
+    fromName: fromName.value.trim(),
+    fromEmail: fromEmail.value.trim(),
+    connectTimeoutSec: Number(connectTimeoutSec.value) || 15,
+  };
+  if (password.value !== "") smtp.password = password.value;
+  return smtp;
+}
+
+const smtpReady = computed(
+  () => Boolean(host.value.trim() && fromEmail.value.trim() && (passwordSet.value || password.value)),
+);
+
+function onEncryption(next: "ssl_tls" | "starttls" | "none") {
+  encryption.value = next;
+  if (next === "ssl_tls" && port.value !== 465) {
+    port.value = 465;
+    showToast("已建议端口 465（SSL/TLS）");
+  } else if (next === "starttls" && port.value !== 587) {
+    port.value = 587;
+    showToast("已建议端口 587（STARTTLS）");
+  }
+}
+
 async function onSave() {
+  const list = emails();
+  const invalid = list.filter((item) => !EMAIL_RE.test(item));
+  if (invalid.length) {
+    error.value = `全局默认收件人不是合法邮箱：${invalid.join("、")}`;
+    return;
+  }
   busy.value = true;
   error.value = "";
-  saved.value = "";
   try {
-    const smtp: Parameters<typeof patchSettings>[0]["smtp"] = {
-      enabled: smtpEnabled.value,
-      host: host.value.trim(),
-      port: Number(port.value) || 587,
-      encryption: encryption.value,
-      username: username.value.trim(),
-      fromName: fromName.value.trim(),
-      fromEmail: fromEmail.value.trim(),
-      replyTo: replyTo.value.trim() || null,
-      connectTimeoutSec: Number(connectTimeoutSec.value) || 15,
-    };
-    if (password.value !== "") smtp.password = password.value;
     apply(
       await patchSettings({
         siteName: siteName.value.trim(),
         publicBaseUrl: publicBaseUrl.value.trim(),
         defaultPollIntervalSec: Number(defaultPollIntervalSec.value) || 300,
-        maxAssetSizeBytes: Number(maxAssetSizeBytes.value) || 1,
-        notifyGlobalEmails: emails(),
-        smtp,
+        maxAssetSizeBytes: Math.max(1, Math.round(Number(maxAssetSizeMb.value) || 1)) * 1024 * 1024,
+        notifyGlobalEmails: list,
+        smtp: smtpDraft(),
       }),
     );
-    saved.value = "已保存";
+    showToast(tab.value === "mail" ? "邮件设置已保存" : tab.value === "sync" ? "同步设置已保存" : "设置已保存");
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : "保存失败";
   } finally {
@@ -119,18 +151,24 @@ async function onSave() {
   }
 }
 
+function openTest() {
+  error.value = "";
+  testTo.value = emails()[0] ?? "";
+  testOpen.value = true;
+}
+
 async function onTest() {
   const to = testTo.value.trim();
   if (!to) {
-    error.value = "请填写测试收件人";
+    showToast("请填写测试收件人");
     return;
   }
   busy.value = true;
   error.value = "";
-  saved.value = "";
   try {
-    await testSmtp(to);
-    saved.value = `测试信已发往 ${to}`;
+    const result = await testSmtp({ to, smtp: smtpDraft() });
+    testOpen.value = false;
+    showToast(`测试邮件已发送 → ${result.to}`);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : "发送测试邮件失败";
   } finally {
@@ -156,9 +194,8 @@ async function onTest() {
         <button type="button" class="tab" :class="{ active: tab === 'mail' }" @click="setTab('mail')">邮件</button>
       </div>
       <div v-if="error" class="form-error" style="margin-bottom: 12px">{{ error }}</div>
-      <div v-if="saved" class="banner-warn">{{ saved }}</div>
 
-      <form class="form-grid card card-pad" style="max-width: 720px" @submit.prevent="onSave">
+      <form class="card card-pad" :class="tab === 'mail' ? 'mail-layout' : 'form-grid'" :style="tab === 'mail' ? undefined : { maxWidth: '640px' }" @submit.prevent="onSave">
         <template v-if="tab === 'general'">
           <div class="field">
             <label for="site-name">站点名称</label>
@@ -181,88 +218,117 @@ async function onTest() {
             <input id="poll" v-model.number="defaultPollIntervalSec" class="input" type="number" min="30" :disabled="busy" />
           </div>
           <div class="field">
-            <label for="max-size">单文件上限（字节）</label>
-            <input id="max-size" v-model.number="maxAssetSizeBytes" class="input" type="number" min="1" :disabled="busy" />
+            <label for="max-size">上传大小上限（MB）</label>
+            <input id="max-size" v-model.number="maxAssetSizeMb" class="input mono" type="number" min="1" :disabled="busy" />
           </div>
         </template>
 
         <template v-else>
-          <div class="switch-row span-2">
-            <div>
-              <div>启用邮件</div>
-              <div class="hint muted t-12">关闭后通知任务会跳过，不重试。</div>
+          <div class="mail-head">
+            <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center">
+              <span>邮件 / SMTP</span>
+              <span class="pill" :class="smtpReady ? 'pill-success' : 'pill-warn'">{{ smtpReady ? "已配置" : "未配置" }}</span>
             </div>
-            <label class="switch">
-              <input v-model="smtpEnabled" type="checkbox" :disabled="busy" />
-              <span></span>
-            </label>
+            <p class="hint">以管理端配置为准；密码只写不回显。测试邮件直接使用当前表单，不要求先保存。</p>
+            <div class="switch-row">
+              <div>
+                <div style="font-weight: 500">启用邮件通知</div>
+                <div class="hint">关闭后队列仍可入队但不发送</div>
+              </div>
+              <label class="switch">
+                <input v-model="smtpEnabled" type="checkbox" :disabled="busy" />
+                <span></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="smtp-host">SMTP Host</label>
+              <input id="smtp-host" v-model="host" class="input mono" placeholder="smtp.example.com" :disabled="busy" />
+            </div>
+            <div class="field">
+              <label for="smtp-port">Port</label>
+              <input id="smtp-port" v-model.number="port" class="input mono" type="number" min="1" max="65535" :disabled="busy" />
+              <span class="hint">465 常配 SSL/TLS；587 常配 STARTTLS</span>
+            </div>
+            <div class="field">
+              <label for="smtp-enc">加密方式</label>
+              <select id="smtp-enc" class="select" :value="encryption" :disabled="busy" @change="onEncryption(($event.target as HTMLSelectElement).value as 'ssl_tls' | 'starttls' | 'none')">
+                <option value="ssl_tls">SSL/TLS</option>
+                <option value="starttls">STARTTLS</option>
+                <option value="none">无</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="smtp-timeout">连接超时（秒）</label>
+              <input id="smtp-timeout" v-model.number="connectTimeoutSec" class="input mono" type="number" min="1" max="120" :disabled="busy" />
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="smtp-user">用户名</label>
+              <input id="smtp-user" v-model="username" class="input mono" :disabled="busy" />
+            </div>
+            <div class="field">
+              <label for="smtp-pass">密码</label>
+              <input
+                id="smtp-pass"
+                v-model="password"
+                class="input mono"
+                type="password"
+                autocomplete="new-password"
+                :placeholder="passwordSet ? '已设置，留空则不修改' : '输入 SMTP 密码'"
+                :disabled="busy"
+              />
+              <span class="hint">{{ passwordSet ? "已设置；留空保存则保留原密码" : "保存后密码不会回显" }}</span>
+            </div>
+            <div class="field">
+              <label for="from-name">发件人名称</label>
+              <input id="from-name" v-model="fromName" class="input" :disabled="busy" />
+            </div>
+            <div class="field">
+              <label for="from-email">发件人邮箱</label>
+              <input id="from-email" v-model="fromEmail" class="input mono" :disabled="busy" />
+            </div>
           </div>
           <div class="field">
-            <label for="smtp-host">SMTP 主机</label>
-            <input id="smtp-host" v-model="host" class="input mono" :disabled="busy" />
-          </div>
-          <div class="field">
-            <label for="smtp-port">端口</label>
-            <input id="smtp-port" v-model.number="port" class="input" type="number" min="1" max="65535" :disabled="busy" />
-          </div>
-          <div class="field">
-            <label for="smtp-enc">加密</label>
-            <select id="smtp-enc" v-model="encryption" class="select" :disabled="busy">
-              <option value="ssl_tls">SSL/TLS</option>
-              <option value="starttls">STARTTLS</option>
-              <option value="none">无</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="smtp-user">用户名</label>
-            <input id="smtp-user" v-model="username" class="input" :disabled="busy" />
-          </div>
-          <div class="field">
-            <label for="smtp-pass">密码</label>
-            <input
-              id="smtp-pass"
-              v-model="password"
-              class="input"
-              type="password"
-              autocomplete="new-password"
-              :placeholder="passwordSet ? '已设置，留空则不修改' : ''"
-              :disabled="busy"
-            />
-          </div>
-          <div class="field">
-            <label for="smtp-timeout">连接超时（秒）</label>
-            <input id="smtp-timeout" v-model.number="connectTimeoutSec" class="input" type="number" min="1" max="120" :disabled="busy" />
-          </div>
-          <div class="field">
-            <label for="from-name">发件人名称</label>
-            <input id="from-name" v-model="fromName" class="input" :disabled="busy" />
-          </div>
-          <div class="field">
-            <label for="from-email">发件人邮箱</label>
-            <input id="from-email" v-model="fromEmail" class="input" :disabled="busy" />
-          </div>
-          <div class="field">
-            <label for="reply-to">回复地址</label>
-            <input id="reply-to" v-model="replyTo" class="input" :disabled="busy" />
-          </div>
-          <div class="field span-2">
             <label for="global-emails">全局默认收件人</label>
-            <textarea id="global-emails" v-model="notifyEmailsText" class="textarea" placeholder="每行一个邮箱" :disabled="busy" />
-            <span class="hint">应用自定义邮箱为空且允许回落时使用。</span>
-          </div>
-          <div class="field">
-            <label for="test-to">测试收件人</label>
-            <input id="test-to" v-model="testTo" class="input" placeholder="you@example.com" :disabled="busy" />
-          </div>
-          <div class="field" style="justify-content: flex-end">
-            <button class="btn" type="button" :disabled="busy" @click="onTest">发送测试邮件</button>
+            <textarea id="global-emails" v-model="notifyEmailsText" class="textarea mono" rows="2" placeholder="每行一个邮箱" :disabled="busy" />
+            <span class="hint">应用级自定义为空且开启回落时使用</span>
           </div>
         </template>
 
-        <div class="form-actions span-2">
-          <button class="btn btn-primary" type="submit" :disabled="busy">保存</button>
+        <div v-if="tab === 'mail'" style="display: flex; gap: 8px; flex-wrap: wrap">
+          <button class="btn btn-primary" type="submit" :disabled="busy">保存设置</button>
+          <button class="btn" type="button" :disabled="busy || !smtpReady || !smtpEnabled" @click="openTest">发送测试邮件</button>
+        </div>
+        <div v-else class="form-actions span-2">
+          <button class="btn btn-primary" type="submit" :disabled="busy">保存设置</button>
         </div>
       </form>
     </template>
+
+    <div v-if="toast" class="toast ok">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+      {{ toast }}
+    </div>
+
+    <div v-if="testOpen" class="modal-backdrop" @click.self="testOpen = false">
+      <form class="modal" @submit.prevent="onTest">
+        <div class="modal-hd">发送测试邮件</div>
+        <div class="modal-bd">
+          <div class="field">
+            <label for="test-to">测试收件人</label>
+            <input id="test-to" v-model="testTo" class="input mono" placeholder="you@example.com" :disabled="busy" />
+            <span class="hint">已配置全局收件人时默认取第一行，可修改</span>
+          </div>
+          <div v-if="error" class="form-error" style="margin-top: 12px">{{ error }}</div>
+        </div>
+        <div class="modal-ft">
+          <button class="btn" type="button" :disabled="busy" @click="testOpen = false">取消</button>
+          <button class="btn btn-primary" type="submit" :disabled="busy">发送</button>
+        </div>
+      </form>
+    </div>
   </div>
 </template>

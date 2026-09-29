@@ -21,6 +21,7 @@ const form = reactive({
   releaseOwner: "",
   releaseRepo: "",
   releaseBaseUrl: "",
+  autoSync: false,
   syncWebhookEnabled: false,
   syncPollEnabled: false,
   assetIncludeGlob: "",
@@ -29,10 +30,11 @@ const form = reactive({
 });
 
 const error = ref("");
-const saved = ref(false);
+
 const warning = ref("");
 const loading = ref(false);
 const ready = ref(false);
+const moreOpen = ref(false);
 
 const syncDisabled = computed(() => form.releaseProvider === "none");
 
@@ -61,8 +63,8 @@ function buildBody(): AppFormBody {
     releaseOwner: emptyToNull(form.releaseOwner),
     releaseRepo: emptyToNull(form.releaseRepo),
     releaseBaseUrl: emptyToNull(form.releaseBaseUrl),
-    syncWebhookEnabled: syncOff ? false : form.syncWebhookEnabled,
-    syncPollEnabled: syncOff ? false : form.syncPollEnabled,
+    syncWebhookEnabled: syncOff || !form.autoSync ? false : form.syncWebhookEnabled,
+    syncPollEnabled: syncOff || !form.autoSync ? false : form.syncPollEnabled,
     assetIncludeGlob: emptyToNull(form.assetIncludeGlob),
     sortOrder: Number.isFinite(form.sortOrder) ? form.sortOrder : 0,
     platformRules: parseRules(form.platformRules),
@@ -90,10 +92,12 @@ onMounted(async () => {
     form.releaseBaseUrl = app.releaseBaseUrl ?? "";
     form.syncWebhookEnabled = app.syncWebhookEnabled;
     form.syncPollEnabled = app.syncPollEnabled;
+    form.autoSync = app.syncWebhookEnabled || app.syncPollEnabled;
     form.assetIncludeGlob = app.assetIncludeGlob ?? "";
     form.sortOrder = app.sortOrder;
     form.platformRules =
       app.platformRules == null ? "" : JSON.stringify(app.platformRules, null, 2);
+    moreOpen.value = Boolean(form.description.trim() || form.assetIncludeGlob || form.platformRules.trim() || form.sortOrder);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : "加载应用失败";
   } finally {
@@ -101,17 +105,8 @@ onMounted(async () => {
   }
 });
 
-function applyWarning(code?: string) {
-  if (code === "PROVIDER_NOT_IMPLEMENTED") {
-    warning.value = "已保存，同步开关已关闭（该 Provider 二期）";
-    form.syncWebhookEnabled = false;
-    form.syncPollEnabled = false;
-  }
-}
-
 async function onSubmit() {
   error.value = "";
-  saved.value = false;
   warning.value = "";
 
   if (!form.name.trim()) {
@@ -137,8 +132,12 @@ async function onSubmit() {
     const body = buildBody();
     if (isEdit.value) {
       const updated = await updateApp(appId.value, body);
-      applyWarning(updated.warning);
-      saved.value = true;
+      await router.replace({
+        name: "admin-app-detail",
+        params: { id: appId.value },
+        query: updated.warning ? { warning: updated.warning } : { saved: "1" },
+      });
+      return;
     } else {
       const created = await createApp(body);
       if (created.warning === "PROVIDER_NOT_IMPLEMENTED") {
@@ -161,21 +160,20 @@ async function onSubmit() {
 
 <template>
   <div>
-    <div class="page-hd">
+    <div class="page-hd page-hd-tight">
       <div>
         <h1>{{ isEdit ? "编辑应用" : "新建应用" }}</h1>
-        <div class="sub">选择 Release 同步源；一期仅 GitHub 可自动同步，Gitee/GitLab 为二期占位</div>
+        <div class="sub">一期仅 GitHub 可自动同步，Gitee/GitLab 为二期占位</div>
       </div>
     </div>
 
     <p v-if="!ready" class="muted">加载中…</p>
-    <form v-else class="card card-pad" style="max-width: 720px" @submit.prevent="onSubmit">
-      <div class="form-grid">
+    <form v-else class="card card-pad app-form" @submit.prevent="onSubmit">
+      <div class="form-grid form-grid-tight">
       <div v-if="warning" class="banner-warn span-2">{{ warning }}</div>
-      <div v-if="saved && !warning" class="muted span-2">已保存</div>
 
       <div class="field">
-        <label for="name">名称</label>
+        <label for="name">应用名称</label>
         <input id="name" v-model="form.name" class="input" maxlength="80" required :disabled="loading" />
       </div>
       <div class="field">
@@ -188,14 +186,10 @@ async function onSubmit() {
           :disabled="isEdit || loading"
           required
         />
-        <span class="hint">{{ isEdit ? "创建后不可改 slug" : "小写字母、数字与连字符，例如 moonnotes" }}</span>
+        <span class="hint">{{ isEdit ? "创建后不可改" : "小写字母、数字与连字符" }}</span>
       </div>
-      <div class="field span-2">
-        <label for="description">简介</label>
-        <textarea id="description" v-model="form.description" class="textarea" rows="3" :disabled="loading" />
-      </div>
-      <div class="field span-2">
-        <label for="provider">同步源（Release Provider）</label>
+      <div class="field">
+        <label for="provider">同步源</label>
         <select id="provider" v-model="form.releaseProvider" class="select" :disabled="loading">
           <option value="none">不绑定（仅手动上传）</option>
           <option value="github">GitHub Release</option>
@@ -232,58 +226,79 @@ async function onSubmit() {
           <option value="login">登录 Login</option>
         </select>
         <span v-if="form.visibility === 'password'" class="hint">
-          口令不在此表单设置。设为「口令」后须在访问口令中心签发并绑定（M5）。
+          口令在访问口令中心签发并绑定。
         </span>
-        <span v-if="form.visibility === 'login'" class="hint" style="color: var(--warn)">
-          login = 任意已登录账号可下，≠ 仅应用成员（成员门禁二期）。
+        <span v-else-if="form.visibility === 'login'" class="hint" style="color: var(--warn)">
+          任意已登录账号可下，不是仅应用成员。
         </span>
       </div>
-      <div class="span-2" style="display: flex; flex-direction: column; gap: 10px">
-        <div class="switch-row" :style="{ opacity: syncDisabled ? 0.45 : 1 }">
+      <div class="span-2 switch-stack">
+        <div class="switch-row" :class="{ dimmed: syncDisabled }">
           <div>
-            <div style="font-weight: 500">接受 Webhook</div>
-            <div class="hint">{{ syncDisabled ? "请先选择已实现的同步源" : "近实时推送" }}</div>
+            <div style="font-weight: 500">启用自动同步</div>
+            <div class="hint">{{ syncDisabled ? "请先选择已实现的同步源" : "关闭后 Webhook 与轮询都不生效" }}</div>
           </div>
           <label class="switch">
-            <input v-model="form.syncWebhookEnabled" type="checkbox" :disabled="syncDisabled || loading" />
+            <input v-model="form.autoSync" type="checkbox" :disabled="syncDisabled || loading" />
             <span />
           </label>
         </div>
-        <div class="switch-row" :style="{ opacity: syncDisabled ? 0.45 : 1 }">
+        <div class="switch-row" :class="{ dimmed: syncDisabled || !form.autoSync }">
+          <div>
+            <div style="font-weight: 500">接受 Webhook</div>
+            <div class="hint">近实时推送</div>
+          </div>
+          <label class="switch">
+            <input v-model="form.syncWebhookEnabled" type="checkbox" :disabled="syncDisabled || !form.autoSync || loading" />
+            <span />
+          </label>
+        </div>
+        <div class="switch-row" :class="{ dimmed: syncDisabled || !form.autoSync }">
           <div>
             <div style="font-weight: 500">参与定时轮询</div>
             <div class="hint">无公网时的兜底</div>
           </div>
           <label class="switch">
-            <input v-model="form.syncPollEnabled" type="checkbox" :disabled="syncDisabled || loading" />
+            <input v-model="form.syncPollEnabled" type="checkbox" :disabled="syncDisabled || !form.autoSync || loading" />
             <span />
           </label>
         </div>
       </div>
-      <div class="field">
-        <label for="glob">Include Glob</label>
-        <input id="glob" v-model="form.assetIncludeGlob" class="input mono" placeholder="*.exe,*.apk" :disabled="loading" />
+      <div class="span-2">
+        <button type="button" class="btn btn-ghost btn-sm" @click="moreOpen = !moreOpen">
+          {{ moreOpen ? "收起简介与规则" : "简介、Include、平台规则" }}
+        </button>
       </div>
-      <div class="field">
-        <label for="sort">排序</label>
-        <input id="sort" v-model.number="form.sortOrder" class="input mono" type="number" :disabled="loading" />
-      </div>
-      <div class="field span-2">
-        <label for="rules">平台规则（JSON）</label>
-        <textarea
-          id="rules"
-          v-model="form.platformRules"
-          class="textarea mono"
-          rows="4"
-          spellcheck="false"
-          placeholder='[{ "pattern": "setup", "platform": "windows", "arch": "x64" }]'
-          :disabled="loading"
-        />
-        <span class="hint">按文件名子串或简单 glob（*）匹配，命中第一条即用。留空则按默认规则推断。手动上传时显式平台优先。</span>
-      </div>
+      <template v-if="moreOpen">
+        <div class="field span-2">
+          <label for="description">简介</label>
+          <textarea id="description" v-model="form.description" class="textarea" rows="2" :disabled="loading" />
+        </div>
+        <div class="field">
+          <label for="glob">Include Glob</label>
+          <input id="glob" v-model="form.assetIncludeGlob" class="input mono" placeholder="*.exe,*.apk" :disabled="loading" />
+        </div>
+        <div class="field">
+          <label for="sort">排序</label>
+          <input id="sort" v-model.number="form.sortOrder" class="input mono" type="number" :disabled="loading" />
+        </div>
+        <div class="field span-2">
+          <label for="rules">平台规则（JSON）</label>
+          <textarea
+            id="rules"
+            v-model="form.platformRules"
+            class="textarea mono"
+            rows="2"
+            spellcheck="false"
+            placeholder='[{ "pattern": "setup", "platform": "windows", "arch": "x64" }]'
+            :disabled="loading"
+          />
+          <span class="hint">子串或简单 glob（*），命中第一条即用。留空走默认推断。</span>
+        </div>
+      </template>
 
       <div v-if="error" class="form-error span-2">{{ error }}</div>
-      <div class="form-actions span-2" style="justify-content: flex-end; margin-top: 4px">
+      <div class="form-actions form-actions-sticky span-2">
         <RouterLink class="btn" to="/admin/apps">取消</RouterLink>
         <button class="btn btn-primary" type="submit" :disabled="loading || !ready">
           {{ loading ? "保存中…" : "保存" }}

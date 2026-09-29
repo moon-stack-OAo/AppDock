@@ -48,9 +48,9 @@ export class MailerService {
     }
   }
 
-  /** 管理端测试：未配置直接 400，连接/认证失败原样抛出。 */
-  async sendTest(to: string, subject: string, text: string) {
-    const smtp = await this.settings.readStoredSmtp();
+  /** 管理端测试：未传草稿则用已保存配置；草稿不落库。 */
+  async sendTest(to: string, subject: string, text: string, draft?: StoredSmtp) {
+    const smtp = draft ?? (await this.settings.readStoredSmtp());
     if (!smtp.enabled || !smtp.host.trim() || !smtp.fromEmail.trim()) {
       throw new BadRequestException({
         error: { code: "SMTP_NOT_CONFIGURED", message: "SMTP 未启用或未配置" },

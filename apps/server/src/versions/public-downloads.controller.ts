@@ -102,6 +102,20 @@ export class PublicDownloadsController {
   }
 
   @Public()
+  @Get(":slug/files/:fileName/download")
+  async downloadByName(
+    @Param("slug") slug: string,
+    @Param("fileName") fileName: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const actor = await this.optionalActor(req);
+    const access = await this.optionalAccess(req);
+    const file = await this.versions.openDownloadByName(slug, fileName, actor, access);
+    this.sendFile(res, file);
+  }
+
+  @Public()
   @Get(":slug/assets/:assetId/download")
   async download(
     @Param("slug") slug: string,
@@ -112,6 +126,13 @@ export class PublicDownloadsController {
     const actor = await this.optionalActor(req);
     const access = await this.optionalAccess(req);
     const file = await this.versions.openDownload(slug, assetId, actor, access);
+    this.sendFile(res, file);
+  }
+
+  private sendFile(
+    res: Response,
+    file: { stream: NodeJS.ReadableStream; name: string; size: number; contentType: string },
+  ) {
     res.setHeader("Content-Type", file.contentType);
     res.setHeader("Content-Length", String(file.size));
     res.setHeader(

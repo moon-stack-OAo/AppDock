@@ -51,8 +51,8 @@ export function patchSettings(body: {
   return apiRequest<SettingsView>("/admin/settings", { method: "PATCH", body });
 }
 
-export function testSmtp(to: string) {
-  return apiRequest<{ ok: true }>("/admin/settings/smtp/test", { method: "POST", body: { to } });
+export function testSmtp(body: { to?: string; smtp?: SmtpPatch }) {
+  return apiRequest<{ ok: true; to: string }>("/admin/settings/smtp/test", { method: "POST", body });
 }
 
 export type AppNotify = {

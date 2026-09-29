@@ -84,7 +84,7 @@ export class PatchSettingsDto {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
+  @IsEmail({}, { each: true })
   notifyGlobalEmails?: string[];
 
   @IsOptional()
@@ -94,6 +94,13 @@ export class PatchSettingsDto {
 }
 
 export class SmtpTestDto {
+  @IsOptional()
   @IsEmail()
-  to!: string;
+  to?: string;
+
+  /** 当前表单。省略则用已保存配置。 */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SmtpPatchDto)
+  smtp?: SmtpPatchDto;
 }
