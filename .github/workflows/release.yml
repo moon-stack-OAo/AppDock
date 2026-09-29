@@ -111,23 +111,34 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ github.ref_name }}"
-          prev="$(git tag --sort=-v:refname | grep -v "^${tag}$" | head -n1 || true)"
-          {
-            echo "## ${tag}"
-            echo
-            echo "镜像：\`ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):${tag#v}\` 与 \`:latest\`"
-            echo
-            echo "Node 包：\`appdock-node.tgz\`（解压后放 \`.env\`，\`npx prisma db push\`，再 \`node dist/main.js\` 与 \`node dist/worker.main.js\`）"
-            echo
-            echo "### 变更"
-            echo
-            if [ -n "$prev" ]; then
-              git log --no-merges --pretty=format:'- %s' "${prev}..HEAD"
-            else
-              git log --no-merges --pretty=format:'- %s'
-            fi
-            echo
-          } > /tmp/notes.md
+          ver="${tag#v}"
+          node --input-type=module -e "
+            import fs from 'node:fs';
+            const ver = process.argv[1];
+            const lines = fs.readFileSync('CHANGELOG.md', 'utf8').split(/\\r?\\n/);
+            const header = new RegExp('^## \\\\[v?' + ver.replace(/\\./g, '\\\\.') + '\\\\]');
+            const start = lines.findIndex((line) => header.test(line));
+            if (start < 0) {
+              console.error('CHANGELOG.md 缺少 ## [' + ver + ']');
+              process.exit(1);
+            }
+            let end = lines.length;
+            for (let i = start + 1; i < lines.length; i += 1) {
+              if (lines[i].startsWith('## ')) { end = i; break; }
+            }
+            const image = 'ghcr.io/' + '${{ github.repository }}'.toLowerCase();
+            const body = [
+              '## ' + process.argv[2],
+              '',
+              '镜像：\`' + image + ':' + ver + '\` 与 \`:latest\`',
+              '',
+              'Node 包：\`appdock-node.tgz\`（解压后放 \`.env\`，\`npx prisma db push\`，再 \`node dist/main.js\` 与 \`node dist/worker.main.js\`）',
+              '',
+              ...lines.slice(start + 1, end),
+              '',
+            ].join('\\n').trim() + '\\n';
+            fs.writeFileSync('/tmp/notes.md', body);
+          " "$ver" "$tag"
 
       - name: Upload to Release
         if: startsWith(github.ref, 'refs/tags/v')
