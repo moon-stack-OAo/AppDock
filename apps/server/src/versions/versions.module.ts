@@ -7,11 +7,12 @@ import { AccessCodesModule } from "../access-codes/access-codes.module";
 import { NotifyModule } from "../notify/notify.module";
 import { PublicDownloadsController } from "./public-downloads.controller";
 import { VersionsController } from "./versions.controller";
+import { ChunkUploadService } from "./chunk-upload.service";
 import { VersionsService } from "./versions.service";
 
 @Module({
   imports: [AuditModule, StorageModule, UsersModule, JwtModule, AccessCodesModule, NotifyModule],
   controllers: [VersionsController, PublicDownloadsController],
-  providers: [VersionsService],
+  providers: [VersionsService, ChunkUploadService],
 })
 export class VersionsModule {}

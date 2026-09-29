@@ -110,6 +110,99 @@ export function uploadAssets(versionId: string, form: FormData) {
   });
 }
 
+/** 单片 50MB，避开服务器 100MB 上传限制。 */
+export const UPLOAD_CHUNK_SIZE = 50 * 1024 * 1024;
+
+export type ChunkInit = {
+  uploadId: string;
+  chunkSize: number;
+  fileSize: number;
+  totalChunks: number;
+  fileName: string;
+};
+
+export type ChunkedFile = {
+  file: File;
+  platform: string;
+  arch: string;
+};
+
+export type ChunkedUploadInput = {
+  appId?: string;
+  versionId?: string;
+  tagName?: string;
+  name?: string;
+  body?: string;
+  isPrerelease?: boolean;
+  files: ChunkedFile[];
+  signal?: AbortSignal;
+  onProgress?: (ratio: number) => void;
+};
+
+export async function uploadFilesChunked(input: ChunkedUploadInput): Promise<AppVersion> {
+  if (input.files.length === 0) {
+    throw new Error("至少选择一个文件");
+  }
+  const totalBytes = input.files.reduce((sum, item) => sum + item.file.size, 0) || 1;
+  let sent = 0;
+  let last: AppVersion | null = null;
+  for (const item of input.files) {
+    last = await uploadOneChunked(input, item, (delta) => {
+      sent += delta;
+      input.onProgress?.(Math.min(1, sent / totalBytes));
+    });
+  }
+  if (!last) throw new Error("上传失败");
+  return last;
+}
+
+async function uploadOneChunked(
+  input: ChunkedUploadInput,
+  item: ChunkedFile,
+  onBytes: (delta: number) => void,
+): Promise<AppVersion> {
+  const meta = {
+    tagName: input.tagName ?? "",
+    name: input.name ?? "",
+    body: input.body ?? "",
+    isPrerelease: String(Boolean(input.isPrerelease)),
+    overwrite: "true",
+    platforms: JSON.stringify([item.platform === "auto" ? "" : item.platform]),
+    arches: JSON.stringify([item.arch === "auto" ? "" : item.arch]),
+    fileName: item.file.name,
+    fileSize: String(item.file.size),
+    contentType: item.file.type || "application/octet-stream",
+  };
+  const initPath = input.versionId
+    ? `/admin/versions/${input.versionId}/assets/upload/init`
+    : `/admin/apps/${input.appId}/versions/upload/init`;
+  const session = await apiRequest<ChunkInit>(initPath, { method: "POST", body: meta, signal: input.signal });
+  const chunkSize = session.chunkSize || UPLOAD_CHUNK_SIZE;
+  try {
+    for (let index = 0; index < session.totalChunks; index += 1) {
+      const start = index * chunkSize;
+      const blob = item.file.slice(start, Math.min(start + chunkSize, item.file.size));
+      const form = new FormData();
+      form.set("index", String(index));
+      form.set("chunk", blob, "chunk.bin");
+      await apiRequest(`/admin/uploads/${session.uploadId}/chunks`, {
+        method: "POST",
+        form,
+        signal: input.signal,
+      });
+      onBytes(blob.size);
+    }
+    const version = await apiRequest<AppVersion>(`/admin/uploads/${session.uploadId}/complete`, {
+      method: "POST",
+      signal: input.signal,
+    });
+    return version;
+  } catch (err) {
+    await apiRequest(`/admin/uploads/${session.uploadId}`, { method: "DELETE" }).catch(() => undefined);
+    throw err;
+  }
+}
+
 export function yankVersion(versionId: string) {
   return apiRequest<AppVersion>(`/admin/versions/${versionId}/yank`, { method: "POST" });
 }

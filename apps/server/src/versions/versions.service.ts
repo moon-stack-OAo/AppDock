@@ -119,27 +119,50 @@ export class VersionsService {
     return this.toView(version);
   }
 
-  async uploadNewVersion(actor: User, appId: string, meta: UploadMeta, files: IncomingFile[]) {
+  async assertCanUploadNew(actor: User, appId: string, meta: UploadMeta) {
     await this.requireAtLeast(actor, appId, AppPermission.Manager);
     const tagName = (meta.tagName ?? "").trim();
     if (!tagName) {
-      await this.cleanup(files);
       throw new ConflictException({
         error: { code: "TAG_REQUIRED", message: "tagName 必填" },
-      });
-    }
-    if (files.length === 0) {
-      throw new ConflictException({
-        error: { code: "FILE_REQUIRED", message: "至少上传一个文件" },
       });
     }
     const existing = await this.prisma.version.findUnique({
       where: { appId_tagName: { appId, tagName } },
     });
     if (existing) {
-      await this.cleanup(files);
       throw new ConflictException({
         error: { code: "TAG_EXISTS", message: "该 tag 已存在，请改用补传" },
+      });
+    }
+  }
+
+  async assertCanUploadAssets(actor: User, versionId: string) {
+    const version = await this.requireVersion(versionId);
+    await this.requireAtLeast(actor, version.appId, AppPermission.Manager);
+    return version.appId;
+  }
+
+  assertAssetSize(size: number) {
+    const max = this.maxBytes();
+    if (size > max) {
+      throw new PayloadTooLargeException({
+        error: { code: "FILE_TOO_LARGE", message: `文件超过上限 ${max} 字节` },
+      });
+    }
+  }
+
+  async uploadNewVersion(actor: User, appId: string, meta: UploadMeta, files: IncomingFile[]) {
+    try {
+      await this.assertCanUploadNew(actor, appId, meta);
+    } catch (err) {
+      await this.cleanup(files);
+      throw err;
+    }
+    const tagName = (meta.tagName ?? "").trim();
+    if (files.length === 0) {
+      throw new ConflictException({
+        error: { code: "FILE_REQUIRED", message: "至少上传一个文件" },
       });
     }
     const version = await this.prisma.version.create({
@@ -167,8 +190,14 @@ export class VersionsService {
   }
 
   async uploadAssets(actor: User, versionId: string, meta: UploadMeta, files: IncomingFile[]) {
-    const version = await this.requireVersion(versionId);
-    await this.requireAtLeast(actor, version.appId, AppPermission.Manager);
+    let version: Awaited<ReturnType<VersionsService["requireVersion"]>>;
+    try {
+      version = await this.requireVersion(versionId);
+      await this.requireAtLeast(actor, version.appId, AppPermission.Manager);
+    } catch (err) {
+      await this.cleanup(files);
+      throw err;
+    }
     if (files.length === 0) {
       throw new ConflictException({
         error: { code: "FILE_REQUIRED", message: "至少上传一个文件" },

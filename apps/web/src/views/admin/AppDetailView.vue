@@ -9,8 +9,7 @@ import {
   listVersions,
   removeMember,
   unarchiveApp,
-  uploadAssets,
-  uploadVersion,
+  uploadFilesChunked,
   upsertMember,
   yankVersion,
   type AppDetail,
@@ -49,6 +48,7 @@ const uploadMode = ref<"new" | "append">("new");
 const pickedFiles = ref<PickedFile[]>([]);
 const pendingOverwrite = ref<File | null>(null);
 const uploadError = ref("");
+const uploadProgress = ref(0);
 const toast = ref("");
 const toastTone = ref<"ok" | "warn">("ok");
 let toastTimer = 0;
@@ -301,36 +301,26 @@ async function copyText(value: string) {
   }
 }
 
-function buildUploadForm(includeTag: boolean) {
-  const form = new FormData();
-  if (includeTag) {
-    form.set("tagName", tagName.value.trim());
-    form.set("name", releaseName.value.trim());
-    form.set("body", changelog.value);
-    form.set("isPrerelease", String(isPrerelease.value));
-  }
-  form.set("overwrite", "true");
-  form.set(
-    "platforms",
-    JSON.stringify(pickedFiles.value.map((item) => (item.platform === "auto" ? "" : item.platform))),
-  );
-  form.set(
-    "arches",
-    JSON.stringify(pickedFiles.value.map((item) => (item.arch === "auto" ? "" : item.arch))),
-  );
-  for (const item of pickedFiles.value) form.append("files", item.file);
-  return form;
-}
-
 async function onUploadNew() {
   uploadError.value = "";
+  uploadProgress.value = 0;
   if (!tagName.value.trim() || pickedFiles.value.length === 0) {
     uploadError.value = "填写 tag，并至少选择一个文件";
     return;
   }
   busy.value = true;
   try {
-    await uploadVersion(appId.value, buildUploadForm(true));
+    await uploadFilesChunked({
+      appId: appId.value,
+      tagName: tagName.value.trim(),
+      name: releaseName.value.trim(),
+      body: changelog.value,
+      isPrerelease: isPrerelease.value,
+      files: pickedFiles.value,
+      onProgress: (ratio) => {
+        uploadProgress.value = ratio;
+      },
+    });
     versions.value = await listVersions(appId.value);
     tagName.value = "";
     releaseName.value = "";
@@ -342,18 +332,26 @@ async function onUploadNew() {
     uploadError.value = e instanceof ApiError ? e.message : "上传失败";
   } finally {
     busy.value = false;
+    uploadProgress.value = 0;
   }
 }
 
 async function onUploadMore() {
   uploadError.value = "";
+  uploadProgress.value = 0;
   if (!appendVersionId.value || pickedFiles.value.length === 0) {
     uploadError.value = "选择已有版本，并至少选择一个文件";
     return;
   }
   busy.value = true;
   try {
-    await uploadAssets(appendVersionId.value, buildUploadForm(false));
+    await uploadFilesChunked({
+      versionId: appendVersionId.value,
+      files: pickedFiles.value,
+      onProgress: (ratio) => {
+        uploadProgress.value = ratio;
+      },
+    });
     versions.value = await listVersions(appId.value);
     pickedFiles.value = [];
     tab.value = "versions";
@@ -361,6 +359,7 @@ async function onUploadMore() {
     uploadError.value = e instanceof ApiError ? e.message : "补传失败";
   } finally {
     busy.value = false;
+    uploadProgress.value = 0;
   }
 }
 
@@ -604,7 +603,7 @@ async function onRemove(member: AppMember) {
         >
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9m0 0l4 4m-4-4l-4 4M5 3h14" /></svg>
           <div class="dz-title" style="margin-top: 10px">拖拽安装包到此处，或点击选择</div>
-          <div class="muted t-13">支持多文件 · 可指定 platform/arch · 同名将二次确认覆盖</div>
+          <div class="muted t-13">支持多文件 · 按 50MB 分片上传 · 可指定 platform/arch · 同名将覆盖</div>
         </div>
         <input ref="pickInput" type="file" multiple hidden :disabled="busy" @change="onPickFiles" />
         <div v-if="pickedFiles.length" class="file-list">
@@ -631,7 +630,7 @@ async function onRemove(member: AppMember) {
           :disabled="busy"
           @click="uploadMode === 'new' ? onUploadNew() : onUploadMore()"
         >
-          {{ busy ? "上传中…" : "提交上传" }}
+          {{ busy ? `上传中 ${Math.round(uploadProgress * 100)}%` : "提交上传" }}
         </button>
         <div v-if="pendingOverwrite" class="modal-backdrop" @click.self="pendingOverwrite = null">
           <div class="modal">

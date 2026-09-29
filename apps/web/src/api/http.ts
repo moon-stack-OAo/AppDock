@@ -33,6 +33,7 @@ type RequestOptions = {
   skipRefresh?: boolean;
   /** 401 时不要清掉登录会话（公开下载页的口令/登录墙） */
   keepSession?: boolean;
+  signal?: AbortSignal;
 };
 
 let refreshPromise: Promise<boolean> | null = null;
@@ -71,7 +72,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { method = "GET", body, form, auth = true, skipRefresh = false, keepSession = false } = options;
+  const { method = "GET", body, form, auth = true, skipRefresh = false, keepSession = false, signal } = options;
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
@@ -89,6 +90,7 @@ export async function apiRequest<T>(
     method,
     credentials: "include",
     headers,
+    signal,
     body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
   });
 
