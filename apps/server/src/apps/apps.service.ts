@@ -147,6 +147,28 @@ export class AppsService {
     return this.toDetail(app, perm);
   }
 
+  async previewRelease(actor: User, rawUrl: string) {
+    if (actor.role !== UserRole.Admin) {
+      throw new ForbiddenException({
+        error: { code: "FORBIDDEN", message: "仅管理员可解析 Release 地址" },
+      });
+    }
+    const parsed = this.parseGithubUrl(rawUrl);
+    const meta = await this.fetchGithubRepo(parsed.owner, parsed.repo);
+    const slug = this.suggestSlug(meta.name || parsed.repo);
+    return {
+      releaseProvider: ReleaseProvider.Github,
+      releaseOwner: parsed.owner,
+      releaseRepo: parsed.repo,
+      name: this.shortName(meta.name || parsed.repo),
+      slug,
+      description: meta.description,
+      iconUrl: meta.iconUrl,
+      private: meta.private,
+      htmlUrl: meta.htmlUrl,
+    };
+  }
+
   async create(actor: User, dto: CreateAppDto): Promise<AppMutationResult> {
     if (actor.role !== UserRole.Admin) {
       throw new ForbiddenException({
@@ -804,6 +826,102 @@ export class AppsService {
         error: { code: "RELEASE_REF_TAKEN", message: "该 Release 源已被其他应用占用" },
       });
     }
+  }
+
+  private parseGithubUrl(raw: string): { owner: string; repo: string } {
+    let url: URL;
+    try {
+      url = new URL(raw.trim());
+    } catch {
+      throw new BadRequestException({
+        error: { code: "BAD_URL", message: "不是有效的 URL" },
+      });
+    }
+    if (url.protocol !== "https:" || url.hostname.toLowerCase() !== "github.com") {
+      throw new BadRequestException({
+        error: { code: "BAD_URL", message: "仅支持 https://github.com/owner/repo" },
+      });
+    }
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length < 2) {
+      throw new BadRequestException({
+        error: { code: "BAD_URL", message: "地址需包含 owner 与 repo，例如 https://github.com/org/app" },
+      });
+    }
+    const owner = decodeURIComponent(parts[0] ?? "");
+    const repo = decodeURIComponent(parts[1] ?? "").replace(/\.git$/i, "");
+    if (!owner || !repo || owner === "." || owner === ".." || repo === "." || repo === "..") {
+      throw new BadRequestException({
+        error: { code: "BAD_URL", message: "无法从地址解析 owner / repo" },
+      });
+    }
+    return { owner, repo };
+  }
+
+  private async fetchGithubRepo(owner: string, repo: string): Promise<{
+    name: string;
+    description: string | null;
+    iconUrl: string | null;
+    private: boolean;
+    htmlUrl: string;
+  }> {
+    const token = this.config.get<string>("APPDOCK_GITHUB_TOKEN")?.trim() ?? "";
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "AppDock",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const encodedOwner = encodeURIComponent(owner);
+    const encodedRepo = encodeURIComponent(repo);
+    let res: Response;
+    try {
+      res = await fetch(`https://api.github.com/repos/${encodedOwner}/${encodedRepo}`, { headers });
+    } catch {
+      throw new BadRequestException({
+        error: { code: "GITHUB_UNREACHABLE", message: "无法连接 GitHub API" },
+      });
+    }
+    if (res.status === 404) {
+      throw new BadRequestException({
+        error: { code: "GITHUB_NOT_FOUND", message: "仓库不存在，或为私有仓库且未配置 Token" },
+      });
+    }
+    if (!res.ok) {
+      throw new BadRequestException({
+        error: { code: "GITHUB_ERROR", message: `GitHub API 返回 ${res.status}` },
+      });
+    }
+    const body = (await res.json()) as {
+      name?: string;
+      description?: string | null;
+      private?: boolean;
+      html_url?: string;
+      owner?: { avatar_url?: string };
+    };
+    return {
+      name: (body.name || repo).trim(),
+      description: body.description?.trim() || null,
+      iconUrl: body.owner?.avatar_url?.trim() || null,
+      private: Boolean(body.private),
+      htmlUrl: body.html_url || `https://github.com/${owner}/${repo}`,
+    };
+  }
+
+  private suggestSlug(name: string): string {
+    const slug = name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64)
+      .replace(/-+$/g, "");
+    return slug.length >= 2 ? slug : "";
+  }
+
+  private shortName(name: string): string {
+    const trimmed = name.trim();
+    return trimmed.length > 80 ? trimmed.slice(0, 80) : trimmed;
   }
 
   private emptyToNull(value: string | null | undefined): string | null {

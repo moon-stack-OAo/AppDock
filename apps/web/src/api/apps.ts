@@ -219,6 +219,25 @@ export function getApp(id: string) {
   return apiRequest<AppDetail>(`/admin/apps/${id}`);
 }
 
+export type ReleasePreview = {
+  releaseProvider: string;
+  releaseOwner: string;
+  releaseRepo: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  iconUrl: string | null;
+  private: boolean;
+  htmlUrl: string;
+};
+
+export function previewRelease(url: string) {
+  return apiRequest<ReleasePreview>("/admin/apps/preview-release", {
+    method: "POST",
+    body: { url },
+  });
+}
+
 export function createApp(body: AppFormBody) {
   return apiRequest<AppView>("/admin/apps", { method: "POST", body });
 }

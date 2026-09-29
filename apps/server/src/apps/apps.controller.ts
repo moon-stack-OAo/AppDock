@@ -13,6 +13,7 @@ import { User } from "@prisma/client";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AppsService } from "./apps.service";
 import { CreateAppDto } from "./dto/create-app.dto";
+import { PreviewReleaseDto } from "./dto/preview-release.dto";
 import { UpdateAppDto } from "./dto/update-app.dto";
 import { UpsertMemberDto } from "./dto/upsert-member.dto";
 
@@ -28,6 +29,11 @@ export class AppsController {
   @Post()
   create(@CurrentUser() actor: User, @Body() dto: CreateAppDto) {
     return this.apps.create(actor, dto);
+  }
+
+  @Post("preview-release")
+  previewRelease(@CurrentUser() actor: User, @Body() dto: PreviewReleaseDto) {
+    return this.apps.previewRelease(actor, dto.url);
   }
 
   @Get(":id/members")

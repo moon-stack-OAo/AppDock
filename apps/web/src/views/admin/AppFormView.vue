@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
-import { createApp, getApp, updateApp, type AppFormBody } from "@/api/apps";
+import { createApp, getApp, previewRelease, updateApp, type AppFormBody } from "@/api/apps";
 import { ApiError } from "@/api/http";
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -30,9 +30,11 @@ const form = reactive({
 });
 
 const error = ref("");
-
 const warning = ref("");
 const loading = ref(false);
+const githubUrl = ref("");
+const parsing = ref(false);
+const parseHint = ref("");
 const ready = ref(false);
 const moreOpen = ref(false);
 
@@ -105,6 +107,36 @@ onMounted(async () => {
   }
 });
 
+async function onParseGithub() {
+  error.value = "";
+  parseHint.value = "";
+  const url = githubUrl.value.trim();
+  if (!url) {
+    error.value = "请粘贴 GitHub 仓库或 Release 地址";
+    return;
+  }
+  parsing.value = true;
+  try {
+    const preview = await previewRelease(url);
+    form.releaseProvider = preview.releaseProvider || "github";
+    form.releaseOwner = preview.releaseOwner;
+    form.releaseRepo = preview.releaseRepo;
+    if (!isEdit.value || !form.name.trim()) form.name = preview.name;
+    if (!isEdit.value && preview.slug) form.slug = preview.slug;
+    if (!form.description.trim() && preview.description) {
+      form.description = preview.description;
+      moreOpen.value = true;
+    }
+    parseHint.value = preview.private
+      ? `已填入 ${preview.releaseOwner}/${preview.releaseRepo}（私有仓库）`
+      : `已填入 ${preview.releaseOwner}/${preview.releaseRepo}`;
+  } catch (e) {
+    error.value = e instanceof ApiError ? e.message : "解析失败";
+  } finally {
+    parsing.value = false;
+  }
+}
+
 async function onSubmit() {
   error.value = "";
   warning.value = "";
@@ -171,6 +203,25 @@ async function onSubmit() {
     <form v-else class="card card-pad app-form" @submit.prevent="onSubmit">
       <div class="form-grid form-grid-tight">
       <div v-if="warning" class="banner-warn span-2">{{ warning }}</div>
+
+      <div class="field span-2">
+        <label for="github-url">GitHub 地址</label>
+        <div class="url-row">
+          <input
+            id="github-url"
+            v-model="githubUrl"
+            class="input mono"
+            placeholder="https://github.com/owner/repo 或 …/releases/tag/v1.0.0"
+            :disabled="loading || parsing"
+            @keydown.enter.prevent="onParseGithub"
+          />
+          <button class="btn" type="button" :disabled="loading || parsing" @click="onParseGithub">
+            {{ parsing ? "解析中…" : "解析" }}
+          </button>
+        </div>
+        <span v-if="parseHint" class="hint">{{ parseHint }}</span>
+        <span v-else class="hint">粘贴仓库或 Release 链接，自动填入同步源、名称与简介。地址里的 tag 不会只同步那一版。</span>
+      </div>
 
       <div class="field">
         <label for="name">应用名称</label>

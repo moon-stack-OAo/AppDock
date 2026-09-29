@@ -687,6 +687,16 @@ table.data tbody tr:hover,
   gap: 10px;
 }
 
+.url-row {
+  display: flex;
+  gap: 8px;
+}
+
+.url-row .input {
+  flex: 1;
+  min-width: 0;
+}
+
 .switch-stack {
   display: flex;
   flex-direction: column;
