@@ -23,7 +23,7 @@
     "dev:server": "pnpm --filter @appdock/server start:dev",
     "dev:worker": "pnpm --filter @appdock/server start:worker:dev",
     "dev:web": "pnpm --filter @appdock/web dev",
-    "build": "pnpm --filter @appdock/shared build && pnpm --filter @appdock/server build && pnpm --filter @appdock/web build",
+    "build": "pnpm --filter @appdock/shared build && pnpm prisma:generate && pnpm --filter @appdock/server build && pnpm --filter @appdock/web build",
     "build:shared": "pnpm --filter @appdock/shared build",
     "prisma:generate": "pnpm --filter @appdock/server prisma:generate",
     "prisma:push": "pnpm --filter @appdock/server prisma:push",

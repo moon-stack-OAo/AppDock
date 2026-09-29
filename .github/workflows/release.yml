@@ -101,7 +101,6 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm build
-          pnpm prisma:generate
 
       - name: Pack node bundle
         run: node scripts/pack-release.mjs
