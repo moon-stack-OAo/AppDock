@@ -1,14 +1,41 @@
 #!/usr/bin/env bash
-# 不用 Docker：对照 GitHub Release 的 latest.yml，有新版本才下载 appdock-node.tgz。
+# 不用 Docker：对照 GitHub Release 的 latest-<平台>.yml，有新版本才下载对应包。
 # 在已解压的安装目录执行。保留 .env 与 data/。
-# 可选：APPDOCK_LATEST_URL、APPDOCK_CHANNEL=v0.2.0（固定版本，默认 latest）
+# 平台默认读 TARGET，否则按系统猜测。可选 APPDOCK_TARGET、APPDOCK_LATEST_URL、APPDOCK_CHANNEL。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+detect_target() {
+  if [[ -n "${APPDOCK_TARGET:-}" ]]; then
+    printf '%s\n' "$APPDOCK_TARGET"
+    return
+  fi
+  if [[ -f TARGET ]]; then
+    tr -d '[:space:]' < TARGET
+    return
+  fi
+  local os arch
+  os="$(uname -s)"
+  arch="$(uname -m)"
+  case "$os" in
+    Darwin)
+      if [[ "$arch" == "arm64" ]]; then printf 'darwin-arm64\n'; else printf 'darwin\n'; fi
+      ;;
+    Linux)
+      if ldd --version 2>&1 | grep -qi musl; then printf 'linux-musl\n'; else printf 'linux\n'; fi
+      ;;
+    *)
+      echo "无法识别平台，请设置 APPDOCK_TARGET" >&2
+      exit 1
+      ;;
+  esac
+}
+
+TARGET_NAME="$(detect_target)"
 CHANNEL="${APPDOCK_CHANNEL:-latest}"
-LATEST_URL="${APPDOCK_LATEST_URL:-https://github.com/moon-stack-OAo/AppDock/releases/${CHANNEL}/download/latest.yml}"
+LATEST_URL="${APPDOCK_LATEST_URL:-https://github.com/moon-stack-OAo/AppDock/releases/${CHANNEL}/download/latest-${TARGET_NAME}.yml}"
 
 if [[ ! -f .env ]]; then
   echo "缺少 .env" >&2
@@ -23,10 +50,11 @@ curl -fsSL "$LATEST_URL" -o "$tmpdir/latest.yml"
 
 version="$(awk '/^version:/{print $2; exit}' "$tmpdir/latest.yml")"
 remote="$(awk '/^sha256:/{print $2; exit}' "$tmpdir/latest.yml")"
+file="$(awk '/^path:/{print $2; exit}' "$tmpdir/latest.yml")"
 url="$(awk '/^downloadUrl:/{print $2; exit}' "$tmpdir/latest.yml")"
 
-if [[ -z "$version" || -z "$remote" || -z "$url" ]]; then
-  echo "latest.yml 缺少 version / sha256 / downloadUrl" >&2
+if [[ -z "$version" || -z "$remote" || -z "$file" || -z "$url" ]]; then
+  echo "latest-${TARGET_NAME}.yml 缺少 version / sha256 / path / downloadUrl" >&2
   exit 1
 fi
 
@@ -35,15 +63,19 @@ if [[ -f VERSION && "$(tr -d '[:space:]' < VERSION)" == "$version" ]]; then
   exit 0
 fi
 
-echo "下载 ${version}"
-curl -fsSL "$url" -o "$tmpdir/appdock-node.tgz"
-local="$(sha256sum "$tmpdir/appdock-node.tgz" | awk '{print $1}')"
+echo "下载 ${version} (${TARGET_NAME})"
+curl -fsSL "$url" -o "$tmpdir/$file"
+if command -v sha256sum >/dev/null 2>&1; then
+  local="$(sha256sum "$tmpdir/$file" | awk '{print $1}')"
+else
+  local="$(shasum -a 256 "$tmpdir/$file" | awk '{print $1}')"
+fi
 if [[ "$local" != "$remote" ]]; then
   echo "sha256 不一致：${local} != ${remote}" >&2
   exit 1
 fi
 
-tar -xzf "$tmpdir/appdock-node.tgz" -C "$tmpdir"
+tar -xzf "$tmpdir/$file" -C "$tmpdir"
 cp -a "$tmpdir/appdock-node/." "$ROOT/"
 printf '%s\n' "$version" > VERSION
 

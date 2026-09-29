@@ -117,7 +117,7 @@ curl http://127.0.0.1:3080/api/v1/health
 ```bash
 mkdir -p /opt/appdock && cd /opt/appdock
 curl -fsSL -o appdock-node.tgz \
-  https://github.com/moon-stack-OAo/AppDock/releases/latest/download/appdock-node.tgz
+  https://github.com/moon-stack-OAo/AppDock/releases/latest/download/appdock-node-linux.tgz
 tar -xzf appdock-node.tgz --strip-components=1
 cp .env.example .env   # 改密钥；DATABASE 用 file:data/appdock.db，REDIS 用 127.0.0.1
 npx prisma db push
@@ -125,7 +125,9 @@ npx tsx prisma/seed.ts # 仅首次：按 .env 创建管理员
 node dist/main.js      # 另开：node dist/worker.main.js
 ```
 
-下次更新：`bash scripts/update-node.sh`。它先读 Release 上的 `latest.yml`，版本与本地 `VERSION` 相同则跳过；否则校验 sha256 后覆盖（保留 `.env` 与 `data/`），再 `prisma db push` 并重启。`scripts/update-host.sh` 仍是拉源码编译的备选。
+包按平台拆分，只含一套 Prisma 引擎：`linux`（OpenSSL 3 / glibc）、`linux-musl`、`darwin`、`darwin-arm64`、`windows`。文件名是 `appdock-node-<平台>.tgz`。
+
+下次更新：`bash scripts/update-node.sh`。它读安装目录里的 `TARGET`（没有则按系统猜测），对照 `latest-<平台>.yml`；版本与本地 `VERSION` 相同则跳过，否则校验 sha256 后覆盖（保留 `.env` 与 `data/`），再 `prisma db push` 并重启。`scripts/update-host.sh` 仍是拉源码编译的备选。
 
 服务：`api` · `worker` · `redis`；宿主机 `./data` → 容器 `/data`。  
 镜像入口：`node dist/main.js` / `node dist/worker.main.js`（工作目录 `apps/server`）。

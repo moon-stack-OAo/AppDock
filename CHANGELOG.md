@@ -10,7 +10,7 @@
 - 下载站：公开 / 口令 / 登录，以及按文件名的稳定下载直链
 - 口令中心、应用成员授权、SMTP 通知（可用未保存的草稿发测试信）
 - Docker 镜像推送到 GHCR，并在发版后设为公开
-- Node 运行包 `appdock-node.tgz`，以及 `latest.yml` 供自更新比对版本与 sha256
+- Node 运行包按平台拆分（linux / linux-musl / darwin / darwin-arm64 / windows），各自带 `latest-<平台>.yml` 供自更新比对版本与 sha256
 - 应用表单可粘贴 GitHub 仓库或 Release 地址，自动填入同步源、名称、slug 与简介
 - 手动上传改为 50MB 分片，避开 100MB 限制
 
