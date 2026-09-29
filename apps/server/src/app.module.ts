@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { ServeStaticModule } from "@nestjs/serve-static";
+import * as fs from "fs";
 import * as path from "path";
 import { PrismaModule } from "./prisma/prisma.module";
 import { HealthModule } from "./health/health.module";
@@ -16,8 +18,19 @@ import { SettingsModule } from "./settings/settings.module";
 import { NotifyModule } from "./notify/notify.module";
 import { MaintenanceModule } from "./maintenance/maintenance.module";
 
+const webRoot = path.resolve(__dirname, "../../web/dist");
+
 @Module({
   imports: [
+    ...(fs.existsSync(webRoot)
+      ? [
+          ServeStaticModule.forRoot({
+            rootPath: webRoot,
+            exclude: ["/api/{*path}"],
+            serveStaticOptions: { fallthrough: true },
+          }),
+        ]
+      : []),
     ConfigModule.forRoot({
       isGlobal: true,
       // 仓库根 .env 优先，其次 apps/server/.env

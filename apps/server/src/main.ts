@@ -2,6 +2,9 @@ import { NestFactory } from "@nestjs/core";
 import { Logger, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { json, urlencoded } from "express";
+import type { NextFunction, Request, Response } from "express";
+import * as fs from "fs";
+import * as path from "path";
 import cookieParser from "cookie-parser";
 import { API_PREFIX } from "@appdock/shared";
 import { resolveAppDockPaths } from "./config/resolve-paths";
@@ -37,6 +40,17 @@ async function bootstrap() {
     }),
   );
   app.setGlobalPrefix(API_PREFIX.replace(/^\//, ""));
+
+  const indexHtml = path.resolve(__dirname, "../../web/dist/index.html");
+  if (fs.existsSync(indexHtml)) {
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.method !== "GET" && req.method !== "HEAD") return next();
+      const url = req.path || "/";
+      if (url === "/api" || url.startsWith("/api/")) return next();
+      if (path.extname(url)) return next();
+      res.sendFile(indexHtml);
+    });
+  }
 
   const host = config.get<string>("APPDOCK_HOST", "0.0.0.0");
   await app.listen(port, host);

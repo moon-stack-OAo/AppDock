@@ -102,6 +102,18 @@ docker compose up -d --build
 curl http://127.0.0.1:3080/api/v1/health
 ```
 
+镜像同时提供 API 与 Web（`http://<主机>:3080/`）。
+
+### 服务器自动更新
+
+推送 `v*` tag 后，GitHub Actions 把镜像推到 GHCR。服务器只需拉镜像，不必在机器上编译。
+
+1. `.env` 增加 `APPDOCK_IMAGE=ghcr.io/<owner>/appdock:latest`（仓库名小写）。
+2. 发版工作流会把 GHCR 包设为 **public**（匿名可拉，不必 `docker login`）。公开后不能再改回私有。
+3. 更新：`bash scripts/update.sh`（或 cron）。`./data` 与 `.env` 不会被覆盖。
+
+不用 Docker、本机直接跑 Node 时，改用 `bash scripts/update-host.sh`（拉 `main`、编译、`prisma db push`、重启）。有 systemd 单元 `appdock-api` / `appdock-worker` 则走 `systemctl`，否则 nohup 到 `data/run/`。仍需本机 Redis。
+
 服务：`api` · `worker` · `redis`；宿主机 `./data` → 容器 `/data`。  
 镜像入口：`node dist/main.js` / `node dist/worker.main.js`（工作目录 `apps/server`）。
 
