@@ -30,7 +30,7 @@ const selected = (process.env.APPDOCK_PACK_TARGETS || Object.keys(TARGETS).join(
   .filter(Boolean);
 
 const prodDeps = { ...serverPkg.dependencies };
-delete prodDeps["@appdock/shared"];
+prodDeps["@appdock/shared"] = "file:./vendor/shared";
 prodDeps["@prisma/client"] = serverPkg.dependencies["@prisma/client"];
 prodDeps.prisma = serverPkg.devDependencies.prisma;
 prodDeps.bcryptjs = serverPkg.dependencies.bcryptjs;
@@ -61,6 +61,13 @@ for (const name of selected) {
   fs.cpSync(path.join(root, "apps/server/prisma"), path.join(stage, "prisma"), { recursive: true });
   fs.copyFileSync(path.join(root, ".env.example"), path.join(stage, ".env.example"));
   fs.writeFileSync(path.join(stage, "TARGET"), `${name}\n`);
+  const sharedDir = path.join(stage, "vendor", "shared");
+  fs.mkdirSync(sharedDir, { recursive: true });
+  fs.cpSync(path.join(root, "packages/shared/dist"), path.join(sharedDir, "dist"), { recursive: true });
+  const sharedPkg = JSON.parse(fs.readFileSync(path.join(root, "packages/shared/package.json"), "utf8"));
+  delete sharedPkg.devDependencies;
+  delete sharedPkg.scripts;
+  fs.writeFileSync(path.join(sharedDir, "package.json"), `${JSON.stringify(sharedPkg, null, 2)}\n`);
 
   const pkg = {
     name: "appdock",
