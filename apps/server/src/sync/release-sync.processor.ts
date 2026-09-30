@@ -372,16 +372,27 @@ export class ReleaseSyncProcessor {
     return existing.id;
   }
 
-  private async markLatest(appId: string, versionId: string, isPrerelease: boolean) {
-    if (isPrerelease) return;
+  private async markLatest(appId: string, _versionId: string, _isPrerelease: boolean) {
+    const versions = await this.prisma.version.findMany({
+      where: { appId, status: "active", isPrerelease: false },
+      select: { id: true, tagName: true, isLatest: true, publishedAt: true },
+    });
+    const best = versions.reduce<(typeof versions)[number] | null>((winner, row) => {
+      if (!winner) return row;
+      const byVer = compareSemver(parseSemver(row.tagName), parseSemver(winner.tagName));
+      if (byVer !== 0) return byVer > 0 ? row : winner;
+      return (row.publishedAt?.getTime() ?? 0) >= (winner.publishedAt?.getTime() ?? 0) ? row : winner;
+    }, null);
     await this.prisma.version.updateMany({
-      where: { appId, isLatest: true, id: { not: versionId } },
+      where: { appId, isLatest: true, ...(best ? { id: { not: best.id } } : {}) },
       data: { isLatest: false },
     });
-    await this.prisma.version.update({
-      where: { id: versionId },
-      data: { isLatest: true },
-    });
+    if (best && !best.isLatest) {
+      await this.prisma.version.update({
+        where: { id: best.id },
+        data: { isLatest: true },
+      });
+    }
   }
 
   private async finish(syncJobId: string, status: "success" | "failed", stats: Stats, message: string | null) {
@@ -490,6 +501,27 @@ function parseStats(raw: string | null): Stats {
   } catch {
     return empty;
   }
+}
+
+type Semver = [number, number, number];
+
+function parseSemver(raw: string): Semver {
+  const parts = raw.trim().replace(/^v/i, "").split(".");
+  const nums: Semver = [0, 0, 0];
+  for (let i = 0; i < 3; i += 1) {
+    const n = Number.parseInt(parts[i] ?? "0", 10);
+    nums[i] = Number.isFinite(n) ? n : 0;
+  }
+  return nums;
+}
+
+function compareSemver(a: Semver, b: Semver): number {
+  for (let i = 0; i < 3; i += 1) {
+    const av = a[i] ?? 0;
+    const bv = b[i] ?? 0;
+    if (av !== bv) return av - bv;
+  }
+  return 0;
 }
 
 function sanitize(value: string): string {

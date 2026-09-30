@@ -6,5 +6,7 @@ export function redisConnection(config: ConfigService): ConnectionOptions {
   return {
     url,
     maxRetriesPerRequest: null,
+    connectTimeout: 2000,
+    retryStrategy: () => null,
   };
 }

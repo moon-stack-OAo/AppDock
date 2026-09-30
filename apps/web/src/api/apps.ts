@@ -136,7 +136,9 @@ export type ChunkedUploadInput = {
   isPrerelease?: boolean;
   files: ChunkedFile[];
   signal?: AbortSignal;
+  /** 传输阶段 0–0.9；合并阶段保持 0.9，直到 complete 返回。 */
   onProgress?: (ratio: number) => void;
+  onPhase?: (phase: "upload" | "merge") => void;
 };
 
 export async function uploadFilesChunked(input: ChunkedUploadInput): Promise<AppVersion> {
@@ -144,13 +146,26 @@ export async function uploadFilesChunked(input: ChunkedUploadInput): Promise<App
     throw new Error("至少选择一个文件");
   }
   const totalBytes = input.files.reduce((sum, item) => sum + item.file.size, 0) || 1;
+  const uploadCap = 0.9;
   let sent = 0;
   let last: AppVersion | null = null;
-  for (const item of input.files) {
-    last = await uploadOneChunked(input, item, (delta) => {
-      sent += delta;
-      input.onProgress?.(Math.min(1, sent / totalBytes));
-    });
+  input.onPhase?.("upload");
+  for (let index = 0; index < input.files.length; index += 1) {
+    const item = input.files[index];
+    if (!item) continue;
+    last = await uploadOneChunked(
+      input,
+      item,
+      (delta) => {
+        sent += delta;
+        input.onProgress?.(Math.min(uploadCap, (sent / totalBytes) * uploadCap));
+      },
+      () => {
+        input.onPhase?.("merge");
+        input.onProgress?.(Math.min(uploadCap, (sent / totalBytes) * uploadCap));
+      },
+    );
+    if (index < input.files.length - 1) input.onPhase?.("upload");
   }
   if (!last) throw new Error("上传失败");
   return last;
@@ -160,6 +175,7 @@ async function uploadOneChunked(
   input: ChunkedUploadInput,
   item: ChunkedFile,
   onBytes: (delta: number) => void,
+  onMerge: () => void,
 ): Promise<AppVersion> {
   const meta = {
     tagName: input.tagName ?? "",
@@ -192,6 +208,7 @@ async function uploadOneChunked(
       });
       onBytes(blob.size);
     }
+    onMerge();
     const version = await apiRequest<AppVersion>(`/admin/uploads/${session.uploadId}/complete`, {
       method: "POST",
       signal: input.signal,

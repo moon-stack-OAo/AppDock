@@ -1240,6 +1240,11 @@ button.chip.active,
   overflow: auto;
 }
 
+.changelog-fold {
+  border-top: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
 .collapse-hd {
   width: 100%;
   display: flex;
@@ -1522,6 +1527,69 @@ button.chip.active,
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface-2);
+}
+
+.upload-panel {
+  position: relative;
+}
+
+.upload-progress {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upload-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.upload-progress-bar {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.upload-progress.is-merge .upload-progress-bar {
+  width: 100%;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--accent),
+    var(--accent) 8px,
+    var(--accent-dim) 8px,
+    var(--accent-dim) 16px
+  );
+  background-size: 32px 100%;
+  animation: upload-progress-stripe 0.8s linear infinite;
+}
+
+.upload-progress-label {
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+
+.upload-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: var(--radius-lg);
+  background: oklch(12% 0.012 250 / 0.45);
+  cursor: progress;
+}
+
+@keyframes upload-progress-stripe {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 32px 0;
+  }
 }
 
 .file-list {

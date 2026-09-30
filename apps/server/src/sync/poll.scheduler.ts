@@ -78,6 +78,7 @@ export class PollScheduler implements OnModuleDestroy {
         });
         if (last && now - last.createdAt.getTime() < intervalSec * 1000) continue;
         if (await this.sync.hasActiveQueueJob(app.id)) continue;
+        if (await this.sync.isPollUpToDate(app)) continue;
         try {
           await this.sync.enqueue(app, "poll");
         } catch (err) {

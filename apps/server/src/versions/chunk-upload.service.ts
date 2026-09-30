@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException, PayloadTooLargeExcept
 import { User } from "@prisma/client";
 import { randomUUID } from "crypto";
 import * as fs from "fs";
+import { Readable } from "stream";
 import * as fsp from "fs/promises";
 import * as os from "os";
 import * as path from "path";
@@ -110,25 +111,18 @@ export class ChunkUploadService {
         error: { code: "CHUNKS_INCOMPLETE", message: "分片未传完" },
       });
     }
-    const merged = path.join(session.dir, "merged.bin");
-    try {
-      await concatChunks(session.dir, session.totalChunks, merged);
-      const incoming = {
-        path: merged,
-        originalName: session.fileName,
-        size: session.fileSize,
-        mimetype: session.contentType,
-      };
-      const result = session.versionId
-        ? await this.versions.uploadAssets(actor, session.versionId, session.meta, [incoming])
-        : await this.versions.uploadNewVersion(actor, session.appId, session.meta, [incoming]);
-      this.sessions.delete(uploadId);
-      await fsp.rm(session.dir, { recursive: true, force: true }).catch(() => undefined);
-      return result;
-    } catch (err) {
-      await fsp.unlink(merged).catch(() => undefined);
-      throw err;
-    }
+    const result = await this.versions.storeMergedUpload(actor, {
+      appId: session.appId,
+      versionId: session.versionId,
+      meta: session.meta,
+      fileName: session.fileName,
+      fileSize: session.fileSize,
+      contentType: session.contentType,
+      open: () => openChunks(session.dir, session.totalChunks),
+    });
+    this.sessions.delete(uploadId);
+    await fsp.rm(session.dir, { recursive: true, force: true }).catch(() => undefined);
+    return result;
   }
 
   async abort(actor: User, uploadId: string) {
@@ -213,36 +207,16 @@ function expectedChunkSize(fileSize: number, index: number, totalChunks: number)
   return rest === 0 ? CHUNK_SIZE : rest;
 }
 
-async function concatChunks(dir: string, total: number, dest: string) {
-  const out = fs.createWriteStream(dest);
-  try {
-    for (let i = 0; i < total; i += 1) {
-      await pipeFile(path.join(dir, String(i)), out);
-    }
-  } catch (err) {
-    out.destroy();
-    await fsp.unlink(dest).catch(() => undefined);
-    throw err;
-  }
-  await new Promise<void>((resolve, reject) => {
-    out.on("error", reject);
-    out.end(resolve);
-  });
+function openChunks(dir: string, total: number): Readable {
+  if (total <= 0) return Readable.from([]);
+  const files = Array.from({ length: total }, (_, i) => path.join(dir, String(i)));
+  return Readable.from(chunkBodies(files));
 }
 
-function pipeFile(src: string, dest: fs.WriteStream): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const input = fs.createReadStream(src);
-    const fail = (err: Error) => {
-      input.destroy();
-      reject(err);
-    };
-    input.on("error", fail);
-    dest.on("error", fail);
-    input.on("end", () => {
-      dest.off("error", fail);
-      resolve();
-    });
-    input.pipe(dest, { end: false });
-  });
+async function* chunkBodies(files: string[]): AsyncGenerator<Buffer> {
+  for (const file of files) {
+    for await (const chunk of fs.createReadStream(file)) {
+      yield chunk as Buffer;
+    }
+  }
 }

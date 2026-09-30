@@ -27,6 +27,7 @@ const focused = ref<PublicVersion | null>(null);
 const includePrerelease = ref(false);
 const historyOpen = ref(false);
 const othersOpen = ref(false);
+const notesOpen = ref(false);
 const accessCode = ref("");
 const error = ref("");
 const gate = ref<"" | "password" | "login" | "notfound">("");
@@ -268,7 +269,13 @@ function formatSize(size: number) {
           </tbody>
         </table>
       </div>
-      <div v-if="shown.body" class="changelog">{{ shown.body }}</div>
+      <div v-if="shown.body" style="margin-top: 8px">
+        <button type="button" class="collapse-hd" @click="notesOpen = !notesOpen">
+          <span>更新说明</span>
+          <span class="muted">{{ notesOpen ? "收起" : "展开" }}</span>
+        </button>
+        <div v-if="notesOpen" class="changelog changelog-fold">{{ shown.body }}</div>
+      </div>
     </template>
     <template v-else>
       <div class="breadcrumb">
@@ -355,8 +362,13 @@ function formatSize(size: number) {
           </div>
         </div>
 
-        <h2 v-if="shown.body" class="t-16" style="font-weight: 600; margin: 28px 0 12px">更新说明</h2>
-        <div v-if="shown.body" class="changelog">{{ shown.body }}</div>
+        <div v-if="shown.body" style="margin-top: 28px">
+          <button type="button" class="collapse-hd" @click="notesOpen = !notesOpen">
+            <span>更新说明</span>
+            <span class="muted">{{ notesOpen ? "收起" : "展开" }}</span>
+          </button>
+          <div v-if="notesOpen" class="changelog changelog-fold">{{ shown.body }}</div>
+        </div>
 
         <div style="margin-top: 28px">
           <button type="button" class="collapse-hd" @click="historyOpen = !historyOpen">

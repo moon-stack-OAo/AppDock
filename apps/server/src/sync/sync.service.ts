@@ -21,6 +21,9 @@ import {
 import { Job } from "bullmq";
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { matchName } from "../providers/glob-match";
+import { GithubReleaseAdapter } from "../providers/github.adapter";
+import { CanonicalRelease } from "../providers/release-provider.types";
 import { QueueRegistry } from "../queues/queue.registry";
 import { ReleaseSyncPayload } from "../queues/queue.constants";
 
@@ -41,6 +44,7 @@ export class SyncService {
     private readonly audit: AuditService,
     private readonly queues: QueueRegistry,
     private readonly config: ConfigService,
+    private readonly github: GithubReleaseAdapter,
   ) {}
 
   async enqueueManual(actor: User, appId: string, tagName?: string) {
@@ -57,7 +61,8 @@ export class SyncService {
 
   /**
    * manual / webhook / poll 共用入队。
-   * jobId 固定为 app.id：同应用已有 active 任务时直接返回已有 jobId，不新建。
+   * jobId 固定为 app.id。同应用已有队列任务，或 SyncJob 仍为 queued/running
+   * （含产物还在下载、主任务已出队）时，直接返回已有 jobId，不新建。
    */
   async enqueue(
     app: App,
@@ -76,12 +81,15 @@ export class SyncService {
       });
     }
 
+    const open = await this.latestOpenId(app.id);
+    if (open) return { jobId: open };
+
     const queue = this.queues.releaseSyncQueue();
     const existing = await queue.getJob(app.id);
     if (existing) {
       const state = await existing.getState();
       if (ACTIVE_STATES.has(state)) {
-        const jobId = this.payloadJobId(existing) ?? (await this.latestQueuedId(app.id));
+        const jobId = this.payloadJobId(existing) ?? (await this.latestOpenId(app.id));
         if (jobId) return { jobId };
       }
     }
@@ -146,8 +154,52 @@ export class SyncService {
     return { jobId: syncJob.id };
   }
 
-  /** 同应用是否已有未完成的队列任务（轮询跳过用，不创建 SyncJob） */
+  /**
+   * 轮询专用：远程没有比本地更新的内容时返回 true，不入队。
+   * 指定 tag、yank、手动同步不走这里。查远程失败时返回 false，交给正式同步处理。
+   */
+  async isPollUpToDate(app: App): Promise<boolean> {
+    if (app.releaseProvider !== "github" || !app.releaseOwner || !app.releaseRepo) return false;
+    let releases: CanonicalRelease[];
+    try {
+      if (app.latestReleaseOnly) {
+        const latest = await this.github.latestRelease(app);
+        releases = latest && !latest.draft ? [latest] : [];
+      } else {
+        releases = await this.github.listReleases(app);
+      }
+    } catch (err) {
+      this.logger.warn(`poll freshness ${app.id} skipped: ${(err as Error).message}`);
+      return false;
+    }
+    const visible = releases.filter((release) => !release.draft && release.tagName);
+    if (visible.length === 0) return true;
+
+    const local = await this.prisma.version.findMany({
+      where: { appId: app.id, tagName: { in: visible.map((release) => release.tagName) } },
+      include: { assets: { select: { name: true, remoteAssetId: true, size: true, source: true } } },
+    });
+    const byTag = new Map(local.map((row) => [row.tagName, row]));
+    for (const release of visible) {
+      const version = byTag.get(release.tagName);
+      if (!version || version.status === "yanked") return false;
+      if ((version.remoteReleaseId ?? "") !== release.remoteReleaseId) return false;
+      const localPublished = version.publishedAt?.getTime() ?? 0;
+      const remotePublished = release.publishedAt?.getTime() ?? 0;
+      if (localPublished !== remotePublished) return false;
+      for (const asset of release.assets) {
+        if (!matchName(asset.name, app.assetIncludeGlob, app.assetExcludeGlob)) continue;
+        const existing = version.assets.find((row) => row.name === asset.name);
+        if (!existing || existing.source === "manual") continue;
+        if (existing.remoteAssetId !== asset.remoteId || existing.size !== asset.size) return false;
+      }
+    }
+    return true;
+  }
+
+  /** 同应用是否仍在同步（队列中，或产物下载未收尾）。轮询跳过用，不创建 SyncJob。 */
   async hasActiveQueueJob(appId: string): Promise<boolean> {
+    if (await this.latestOpenId(appId)) return true;
     const queue = this.queues.releaseSyncQueue();
     const existing = await queue.getJob(appId);
     if (!existing) return false;
@@ -260,6 +312,19 @@ export class SyncService {
       });
     }
 
+    const open = await this.latestOpenId(app.id);
+    if (open) {
+      throw new HttpException(
+        {
+          error: {
+            code: "SYNC_ALREADY_QUEUED",
+            message: "该应用已有进行中的同步",
+          },
+        },
+        409,
+      );
+    }
+
     const retried = await this.prisma.syncJob.create({
       data: {
         appId: job.appId,
@@ -274,7 +339,6 @@ export class SyncService {
       const state = await existing.getState();
       if (ACTIVE_STATES.has(state)) {
         await this.prisma.syncJob.delete({ where: { id: retried.id } }).catch(() => undefined);
-        const current = this.payloadJobId(existing);
         throw new HttpException(
           {
             error: {
@@ -320,7 +384,8 @@ export class SyncService {
     return job.data?.syncJobId ?? null;
   }
 
-  private async latestQueuedId(appId: string): Promise<string | null> {
+  /** queued：还在主队列；running：主任务执行中，或产物仍在下载未收尾。 */
+  private async latestOpenId(appId: string): Promise<string | null> {
     const row = await this.prisma.syncJob.findFirst({
       where: { appId, status: { in: ["queued", "running"] } },
       orderBy: { createdAt: "desc" },

@@ -19,6 +19,8 @@ import { createHash } from "crypto";
 import * as fs from "fs";
 import * as fsp from "fs/promises";
 import * as path from "path";
+import { PassThrough, Readable } from "stream";
+import { pipeline } from "stream/promises";
 import { AuditService } from "../audit/audit.service";
 import { NotifyService } from "../notify/notify.service";
 import { AccessCodesService } from "../access-codes/access-codes.service";
@@ -39,6 +41,17 @@ export type IncomingFile = {
   originalName: string;
   size: number;
   mimetype?: string;
+  checksumSha256?: string;
+};
+
+export type MergedUpload = {
+  appId: string;
+  versionId?: string;
+  meta: UploadMeta;
+  fileName: string;
+  fileSize: number;
+  contentType: string;
+  open: () => Readable;
 };
 
 export type UploadMeta = {
@@ -189,6 +202,42 @@ export class VersionsService {
     }
   }
 
+  async storeMergedUpload(actor: User, upload: MergedUpload) {
+    if (upload.versionId) {
+      return this.storeOntoVersion(actor, upload.versionId, upload);
+    }
+    try {
+      await this.assertCanUploadNew(actor, upload.appId, upload.meta);
+    } catch (err) {
+      upload.open().destroy();
+      throw err;
+    }
+    const tagName = (upload.meta.tagName ?? "").trim();
+    const version = await this.prisma.version.create({
+      data: {
+        appId: upload.appId,
+        tagName,
+        name: upload.meta.name?.trim() || tagName,
+        body: upload.meta.body?.trim() || null,
+        isPrerelease: Boolean(upload.meta.isPrerelease),
+        publishedAt: new Date(),
+        source: "manual",
+        status: VersionStatus.Active,
+        createdByUserId: actor.id,
+      },
+    });
+    try {
+      const asset = await this.storeStream(actor, upload.appId, version.id, upload.meta, upload, 0);
+      const assets = [asset];
+      await this.markLatest(upload.appId, version.id, Boolean(upload.meta.isPrerelease));
+      await this.enqueueUpload(upload.appId, version.id, version.tagName, version.body, assets);
+      return this.toView({ ...version, isLatest: !upload.meta.isPrerelease, assets });
+    } catch (err) {
+      await this.prisma.version.delete({ where: { id: version.id } }).catch(() => undefined);
+      throw err;
+    }
+  }
+
   async uploadAssets(actor: User, versionId: string, meta: UploadMeta, files: IncomingFile[]) {
     let version: Awaited<ReturnType<VersionsService["requireVersion"]>>;
     try {
@@ -277,11 +326,11 @@ export class VersionsService {
     access: { codeId?: string; allowedAppIds: string[] } = { allowedAppIds: [] },
   ) {
     const app = await this.requirePublicApp(slug, actor, access);
-    const latest = await this.prisma.version.findFirst({
+    const candidates = await this.prisma.version.findMany({
       where: { appId: app.id, status: VersionStatus.Active, isPrerelease: false },
-      orderBy: [{ isLatest: "desc" }, { publishedAt: "desc" }],
       include: { assets: { orderBy: { name: "asc" } } },
     });
+    const latest = pickHighestVersion(candidates);
     return {
       app: this.publicAppView(app),
       latest: latest ? this.publicVersion(app.slug, latest) : null,
@@ -454,7 +503,7 @@ export class VersionsService {
             error: { code: "ASSET_EXISTS", message: `同名文件已存在：${name}` },
           });
         }
-        const sha = await sha256File(file.path);
+        const sha = file.checksumSha256 ?? (await sha256File(file.path));
         const storageKey = path.posix.join(appId, versionId, `${existing?.id ?? "new"}-${name}`);
         const rulesJson = await this.platformRulesJson(appId);
         const explicitPlatform = meta.platforms?.[i] ?? meta.platform;
@@ -507,6 +556,140 @@ export class VersionsService {
     return saved;
   }
 
+  private async storeOntoVersion(actor: User, versionId: string, upload: MergedUpload) {
+    let version: Awaited<ReturnType<VersionsService["requireVersion"]>>;
+    try {
+      version = await this.requireVersion(versionId);
+      await this.requireAtLeast(actor, version.appId, AppPermission.Manager);
+    } catch (err) {
+      upload.open().destroy();
+      throw err;
+    }
+    const asset = await this.storeStream(actor, version.appId, version.id, upload.meta, upload, 0);
+    const assets = [asset];
+    await this.enqueueUpload(version.appId, version.id, version.tagName, version.body, assets);
+    const fresh = await this.prisma.version.findUniqueOrThrow({
+      where: { id: version.id },
+      include: { assets: { orderBy: { name: "asc" } } },
+    });
+    return { ...this.toView(fresh), uploaded: assets };
+  }
+
+  private async storeStream(
+    actor: User,
+    appId: string,
+    versionId: string,
+    meta: UploadMeta,
+    upload: MergedUpload,
+    index: number,
+  ): Promise<AssetRow> {
+    const max = this.maxBytes();
+    if (upload.fileSize > max) {
+      upload.open().destroy();
+      throw new PayloadTooLargeException({
+        error: { code: "FILE_TOO_LARGE", message: `文件超过上限 ${max} 字节` },
+      });
+    }
+    const name = sanitizeFileName(upload.fileName);
+    const existing = await this.prisma.asset.findUnique({
+      where: { versionId_name: { versionId, name } },
+    });
+    if (existing && !meta.overwrite) {
+      upload.open().destroy();
+      throw new ConflictException({
+        error: { code: "ASSET_EXISTS", message: `同名文件已存在：${name}` },
+      });
+    }
+    const rulesJson = await this.platformRulesJson(appId);
+    const platform = normalizePlatform(meta.platforms?.[index] ?? meta.platform, name, rulesJson);
+    const arch = normalizeArch(meta.arches?.[index] ?? meta.arch, name, rulesJson);
+    let key = "";
+    let createdId: string | null = null;
+    let staged: string | null = null;
+    try {
+      if (!existing) {
+        const created = await this.prisma.asset.create({
+          data: {
+            versionId,
+            name,
+            platform,
+            arch,
+            contentType: upload.contentType || null,
+            size: upload.fileSize,
+            checksumSha256: "",
+            storageKey: path.posix.join(appId, versionId, "pending"),
+            source: "manual",
+            uploadedByUserId: actor.id,
+          },
+        });
+        createdId = created.id;
+        key = path.posix.join(appId, versionId, `${created.id}-${name}`);
+      } else {
+        key = existing.storageKey;
+      }
+      const { sha, bytes, token } = await this.hashIntoStorage(key, upload.open(), Boolean(existing));
+      staged = token;
+      if (bytes !== upload.fileSize) {
+        throw new ConflictException({
+          error: { code: "FILE_SIZE", message: "合并后大小与声明不一致" },
+        });
+      }
+      if (token) {
+        if (existing) await this.storage.delete(existing.storageKey);
+        await this.storage.commitStaged(key, token);
+        staged = null;
+      }
+      return await this.prisma.asset.update({
+        where: { id: existing?.id ?? createdId! },
+        data: {
+          platform,
+          arch,
+          contentType: upload.contentType || null,
+          size: upload.fileSize,
+          checksumSha256: sha,
+          storageKey: key,
+          uploadedByUserId: actor.id,
+        },
+      });
+    } catch (err) {
+      if (staged && key) await this.storage.discardStaged(key, staged).catch(() => undefined);
+      else if (!existing && key) await this.storage.delete(key).catch(() => undefined);
+      if (createdId) {
+        await this.prisma.asset.delete({ where: { id: createdId } }).catch(() => undefined);
+      }
+      throw err;
+    }
+  }
+
+  private async hashIntoStorage(key: string, source: Readable, stage: boolean) {
+    const hash = createHash("sha256");
+    const tap = new PassThrough();
+    tap.on("data", (chunk: Buffer | string) => hash.update(chunk));
+    const write = stage ? this.storage.stageStream(key, tap) : this.storage.putStream(key, tap);
+    let settled = false;
+    const done = write.then(
+      (value) => {
+        settled = true;
+        return value;
+      },
+      (err) => {
+        settled = true;
+        throw err;
+      },
+    );
+    try {
+      await pipeline(source, tap);
+      const value = await done;
+      const bytes = typeof value === "number" ? value : value.bytes;
+      const token = typeof value === "number" ? null : value.token;
+      return { sha: hash.digest("hex"), bytes, token };
+    } catch (err) {
+      if (!settled) tap.destroy();
+      await done.catch(() => undefined);
+      throw err;
+    }
+  }
+
   private async enqueueUpload(
     appId: string,
     versionId: string,
@@ -524,28 +707,30 @@ export class VersionsService {
     });
   }
 
-  private async markLatest(appId: string, versionId: string, isPrerelease: boolean) {
-    if (isPrerelease) return;
-    await this.prisma.version.updateMany({
-      where: { appId, isLatest: true },
-      data: { isLatest: false },
-    });
-    await this.prisma.version.update({
-      where: { id: versionId },
-      data: { isLatest: true },
-    });
+  private async markLatest(appId: string, _versionId: string, _isPrerelease: boolean) {
+    await this.recomputeLatest(appId);
   }
 
   private async promoteLatest(appId: string) {
-    const next = await this.prisma.version.findFirst({
+    await this.recomputeLatest(appId);
+  }
+
+  private async recomputeLatest(appId: string) {
+    const versions = await this.prisma.version.findMany({
       where: { appId, status: VersionStatus.Active, isPrerelease: false },
-      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+      select: { id: true, tagName: true, isLatest: true, publishedAt: true },
     });
-    if (!next) return;
-    await this.prisma.version.update({
-      where: { id: next.id },
-      data: { isLatest: true },
+    const best = pickHighestVersion(versions);
+    await this.prisma.version.updateMany({
+      where: { appId, isLatest: true, ...(best ? { id: { not: best.id } } : {}) },
+      data: { isLatest: false },
     });
+    if (best && !best.isLatest) {
+      await this.prisma.version.update({
+        where: { id: best.id },
+        data: { isLatest: true },
+      });
+    }
   }
 
   private async assertTagFree(appId: string, tagName: string) {

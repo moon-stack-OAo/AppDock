@@ -23,10 +23,18 @@ export class NotifyService {
 
   /** 队列不可用只记 warn，不让上传/同步失败。 */
   async enqueue(payload: NotifyPayload) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("notify enqueue timed out")), 2500);
+    });
+    const added = this.queues.notifyQueue().add(payload.event, payload);
+    added.catch(() => undefined);
     try {
-      await this.queues.notifyQueue().add(payload.event, payload);
+      await Promise.race([added, timeout]);
     } catch (err) {
       this.logger.warn(`notify enqueue failed event=${payload.event}: ${(err as Error).message}`);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
 

@@ -49,6 +49,8 @@ const pickedFiles = ref<PickedFile[]>([]);
 const pendingOverwrite = ref<File | null>(null);
 const uploadError = ref("");
 const uploadProgress = ref(0);
+const uploadPhase = ref<"upload" | "merge">("upload");
+const uploading = ref(false);
 const toast = ref("");
 const toastTone = ref<"ok" | "warn">("ok");
 let toastTimer = 0;
@@ -301,6 +303,26 @@ async function copyText(value: string) {
   }
 }
 
+function beginUpload() {
+  uploadProgress.value = 0;
+  uploadPhase.value = "upload";
+  uploading.value = true;
+  busy.value = true;
+}
+
+function endUpload() {
+  busy.value = false;
+  uploading.value = false;
+  uploadProgress.value = 0;
+  uploadPhase.value = "upload";
+}
+
+const uploadButtonLabel = computed(() => {
+  if (!uploading.value) return "提交上传";
+  if (uploadPhase.value === "merge") return "正在合并…";
+  return `上传中 ${Math.min(90, Math.round(uploadProgress.value * 100))}%`;
+});
+
 async function onUploadNew() {
   uploadError.value = "";
   uploadProgress.value = 0;
@@ -308,7 +330,7 @@ async function onUploadNew() {
     uploadError.value = "填写 tag，并至少选择一个文件";
     return;
   }
-  busy.value = true;
+  beginUpload();
   try {
     await uploadFilesChunked({
       appId: appId.value,
@@ -319,6 +341,9 @@ async function onUploadNew() {
       files: pickedFiles.value,
       onProgress: (ratio) => {
         uploadProgress.value = ratio;
+      },
+      onPhase: (phase) => {
+        uploadPhase.value = phase;
       },
     });
     versions.value = await listVersions(appId.value);
@@ -331,8 +356,7 @@ async function onUploadNew() {
   } catch (e) {
     uploadError.value = e instanceof ApiError ? e.message : "上传失败";
   } finally {
-    busy.value = false;
-    uploadProgress.value = 0;
+    endUpload();
   }
 }
 
@@ -343,13 +367,16 @@ async function onUploadMore() {
     uploadError.value = "选择已有版本，并至少选择一个文件";
     return;
   }
-  busy.value = true;
+  beginUpload();
   try {
     await uploadFilesChunked({
       versionId: appendVersionId.value,
       files: pickedFiles.value,
       onProgress: (ratio) => {
         uploadProgress.value = ratio;
+      },
+      onPhase: (phase) => {
+        uploadPhase.value = phase;
       },
     });
     versions.value = await listVersions(appId.value);
@@ -358,8 +385,7 @@ async function onUploadMore() {
   } catch (e) {
     uploadError.value = e instanceof ApiError ? e.message : "补传失败";
   } finally {
-    busy.value = false;
-    uploadProgress.value = 0;
+    endUpload();
   }
 }
 
@@ -560,6 +586,7 @@ async function onRemove(member: AppMember) {
           <button type="button" class="chip" :class="{ active: uploadMode === 'new' }" @click="uploadMode = 'new'">新建版本 + 多文件</button>
           <button type="button" class="chip" :class="{ active: uploadMode === 'append' }" @click="uploadMode = 'append'">向已有版本补传</button>
         </div>
+        <div class="upload-panel">
         <div v-if="uploadMode === 'new'" class="form-grid" style="margin-bottom: 14px; max-width: 720px">
           <div class="field">
             <label for="tag">版本 Tag</label>
@@ -606,6 +633,15 @@ async function onRemove(member: AppMember) {
           <div class="muted t-13">支持多文件 · 按 50MB 分片上传 · 可指定 platform/arch · 同名将覆盖</div>
         </div>
         <input ref="pickInput" type="file" multiple hidden :disabled="busy" @change="onPickFiles" />
+        <div v-if="uploading" class="upload-progress" :class="{ 'is-merge': uploadPhase === 'merge' }">
+          <div class="upload-progress-track">
+            <div
+              class="upload-progress-bar"
+              :style="uploadPhase === 'merge' ? undefined : { width: `${Math.min(100, (uploadProgress / 0.9) * 100)}%` }"
+            ></div>
+          </div>
+          <div class="upload-progress-label">{{ uploadButtonLabel }}</div>
+        </div>
         <div v-if="pickedFiles.length" class="file-list">
           <div v-for="item in pickedFiles" :key="item.file.name" class="file-row" style="flex-wrap: wrap">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z" /></svg>
@@ -630,8 +666,10 @@ async function onRemove(member: AppMember) {
           :disabled="busy"
           @click="uploadMode === 'new' ? onUploadNew() : onUploadMore()"
         >
-          {{ busy ? `上传中 ${Math.round(uploadProgress * 100)}%` : "提交上传" }}
+          {{ uploadButtonLabel }}
         </button>
+        <div v-if="uploading" class="upload-mask" aria-hidden="true"></div>
+        </div>
         <div v-if="pendingOverwrite" class="modal-backdrop" @click.self="pendingOverwrite = null">
           <div class="modal">
             <div class="modal-hd">确认覆盖同名文件？</div>

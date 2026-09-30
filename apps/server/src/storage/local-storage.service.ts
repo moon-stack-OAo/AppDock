@@ -3,6 +3,8 @@ import { ConfigService } from "@nestjs/config";
 import * as fs from "fs";
 import * as fsp from "fs/promises";
 import * as path from "path";
+import { Transform } from "stream";
+import { pipeline } from "stream/promises";
 import { findRepoRoot } from "../config/resolve-paths";
 import { Storage } from "./storage.interface";
 
@@ -33,6 +35,66 @@ export class LocalStorageService implements Storage {
         await fsp.unlink(srcPath);
         return;
       }
+      throw err;
+    }
+  }
+
+  async putStream(key: string, source: NodeJS.ReadableStream): Promise<number> {
+    const dest = this.resolveKey(key);
+    const tmp = `${dest}.${process.pid}.${Date.now()}.part`;
+    try {
+      const bytes = await this.writeTemp(dest, tmp, source);
+      await fsp.rename(tmp, dest);
+      return bytes;
+    } catch (err) {
+      await fsp.unlink(tmp).catch(() => undefined);
+      throw err;
+    }
+  }
+
+  /** 流写入同目录临时文件并返回字节数，不替换已有目标。供覆盖前暂存。 */
+  async stageStream(key: string, source: NodeJS.ReadableStream): Promise<{ bytes: number; token: string }> {
+    const dest = this.resolveKey(key);
+    const token = `${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}`;
+    const tmp = `${dest}.${token}.part`;
+    try {
+      const bytes = await this.writeTemp(dest, tmp, source);
+      return { bytes, token };
+    } catch (err) {
+      await fsp.unlink(tmp).catch(() => undefined);
+      throw err;
+    }
+  }
+
+  /** 把 stageStream 的临时文件改名为最终 key。 */
+  async commitStaged(key: string, token: string): Promise<void> {
+    const dest = this.resolveKey(key);
+    const tmp = `${dest}.${token}.part`;
+    await fsp.rename(tmp, dest);
+  }
+
+  /** 删除 stageStream 留下的临时文件。 */
+  async discardStaged(key: string, token: string): Promise<void> {
+    const dest = this.resolveKey(key);
+    await fsp.unlink(`${dest}.${token}.part`).catch((err: NodeJS.ErrnoException) => {
+      if (err.code !== "ENOENT") throw err;
+    });
+  }
+
+  private async writeTemp(dest: string, tmp: string, source: NodeJS.ReadableStream): Promise<number> {
+    await fsp.mkdir(path.dirname(dest), { recursive: true });
+    let bytes = 0;
+    const counter = new Transform({
+      transform(chunk, _encoding, callback) {
+        bytes += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(String(chunk));
+        callback(null, chunk);
+      },
+    });
+    try {
+      await pipeline(source, counter, fs.createWriteStream(tmp));
+      return bytes;
+    } catch (err) {
+      counter.destroy();
       throw err;
     }
   }
